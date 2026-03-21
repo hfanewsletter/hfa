@@ -283,7 +283,20 @@ python src/main.py --process-existing
 
 # Process all PDFs in inbox/ and exit (no watching)
 python src/main.py --run-once
+
+# Resend the last digest email without reprocessing any PDFs
+python src/main.py --resend-last
 ```
+
+### When to use `--resend-last`
+
+If the application successfully processed a PDF (extracted articles, removed duplicates, wrote summaries) but then failed at the email step — for example due to a wrong password or network issue — you do **not** need to reprocess the PDF. Simply fix the issue and run:
+
+```bash
+python src/main.py --resend-last
+```
+
+This reads the last completed digest from the local database and sends it directly.
 
 ---
 

@@ -19,13 +19,13 @@ RETRY_BACKOFF = [5, 15, 30]  # Seconds to wait between retries
 
 class GeminiProvider(LLMProvider):
 
-    def __init__(self, api_key: str, model: str = "gemini-2.0-flash-001"):
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash", embedding_model: str = "gemini-embedding-001"):
         self.client = genai.Client(
             api_key=api_key,
             http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT * 1000),  # milliseconds
         )
         self.model_name = model
-        self.embedding_model = "models/text-embedding-004"
+        self.embedding_model = embedding_model
 
     def _call_with_retry(self, contents) -> str:
         """

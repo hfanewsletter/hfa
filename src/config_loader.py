@@ -9,9 +9,10 @@ load_dotenv()
 
 @dataclass
 class LLMConfig:
-    provider: str    # "gemini" or "openai"
-    model: str       # e.g. "gemini-1.5-pro"
-    api_key: str     # from env: LLM_API_KEY
+    provider: str         # "gemini" or "openai"
+    model: str            # e.g. "gemini-2.5-flash" — used for extraction & summarization
+    embedding_model: str  # e.g. "gemini-embedding-exp-03-07" — used for deduplication
+    api_key: str          # from env: LLM_API_KEY
 
 
 @dataclass
@@ -54,6 +55,7 @@ def load_config(config_path: str = "config/config.yaml") -> AppConfig:
         llm=LLMConfig(
             provider=llm_cfg["provider"],
             model=os.getenv("LLM_MODEL", llm_cfg["model"]),
+            embedding_model=os.getenv("LLM_EMBEDDING_MODEL", llm_cfg.get("embedding_model", "gemini-embedding-001")),
             api_key=os.getenv("LLM_API_KEY", ""),
         ),
         storage=StorageConfig(

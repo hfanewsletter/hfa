@@ -10,6 +10,7 @@ from src.article_extractor import ArticleExtractor
 from src.deduplicator import Deduplicator
 from src.summarizer import Summarizer
 from src.email_sender import EmailSender
+from src.digest_store import DigestStore
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class Pipeline:
             provider_name=config.llm.provider,
             api_key=config.llm.api_key,
             model=config.llm.model,
+            embedding_model=config.llm.embedding_model,
         )
 
         # Initialize storage provider (config-driven)
@@ -49,6 +51,7 @@ class Pipeline:
         self.deduplicator = Deduplicator(self.llm, config.dedup_threshold)
         self.summarizer = Summarizer(self.llm)
         self.email_sender = EmailSender(config.email)
+        self.digest_store = DigestStore()
 
     def run(self, pdf_paths: List[str] = None) -> None:
         """
@@ -97,7 +100,10 @@ class Pipeline:
 
     def _process_single_pdf(self, pdf_path: str) -> List[ProcessedArticle]:
         """Process a single PDF through the full pipeline."""
-        logger.info("--- Processing: %s ---", os.path.basename(pdf_path))
+        import time
+        filename = os.path.basename(pdf_path)
+        start_time = time.time()
+        logger.info("--- Processing: %s ---", filename)
 
         # 1. Read PDF bytes
         pdf_bytes = self.storage.read_file(pdf_path)
@@ -106,8 +112,10 @@ class Pipeline:
         # 2. Extract articles
         articles = self.extractor.extract_from_pdf(pdf_bytes, pdf_path)
         if not articles:
-            logger.warning("No articles extracted from %s", pdf_path)
+            logger.warning("No articles extracted from %s", filename)
             self.storage.move_to_processed(pdf_path)
+            elapsed = time.time() - start_time
+            logger.info("Finished '%s' in %.1f seconds (0 articles).", filename, elapsed)
             return []
 
         logger.info("Extracted %d articles", len(articles))
@@ -118,7 +126,17 @@ class Pipeline:
         # 4. Summarize (only unique articles)
         processed = self.summarizer.summarize_all(processed)
 
-        # 5. Move to processed folder
+        # 5. Persist digest so it can be resent without reprocessing
+        self.digest_store.save_digest(processed)
+
+        # 6. Move to processed folder
         self.storage.move_to_processed(pdf_path)
 
+        elapsed = time.time() - start_time
+        unique = sum(1 for a in processed if not a.is_duplicate)
+        mins, secs = divmod(int(elapsed), 60)
+        logger.info(
+            "Finished '%s' in %dm %ds — %d articles extracted, %d unique, %d duplicates.",
+            filename, mins, secs, len(articles), unique, len(articles) - unique,
+        )
         return processed
