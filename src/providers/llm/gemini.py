@@ -101,6 +101,7 @@ Return a JSON array. Each element must have exactly these fields:
 - "title": The article headline (string)
 - "content": The full article text visible in these pages (string)
 - "page_number": The page where the article starts (integer)
+- "category": A short category label for the article (string). Choose the single best fit from: Politics, Business, Sports, Local, International, Opinion, Science, Technology, Health, Entertainment, Crime, Environment. Use "General" if none fit.
 
 Return ONLY the JSON array, no other text. If no news articles are found on these pages, return [].
 
@@ -143,6 +144,7 @@ Return a JSON array. Each element must have exactly:
 - "title": Article headline (string)
 - "content": Full article text as visible on these pages (string)
 - "page_number": The page where the article starts (integer)
+- "category": A short category label for the article (string). Choose the single best fit from: Politics, Business, Sports, Local, International, Opinion, Science, Technology, Health, Entertainment, Crime, Environment. Use "General" if none fit.
 
 Return ONLY the JSON array, no other text. If no news articles are found, return [].
 """
@@ -184,12 +186,14 @@ Return ONLY the JSON array, no other text. If no news articles are found, return
             title = item.get("title", "").strip()
             content = item.get("content", "").strip()
             page_num = item.get("page_number", 1)
+            category = item.get("category", "General").strip() or "General"
             if title and content:
                 articles.append(Article(
                     title=title,
                     content=content,
                     page_number=int(page_num),
                     source_pdf=source_pdf,
+                    category=category,
                 ))
         return articles
 

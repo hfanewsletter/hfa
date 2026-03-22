@@ -20,6 +20,11 @@ email:
   subscribers:
     - tableaulancer@gmail.com
     - curiousmindshex@gmail.com
+  # Digest email subject/header title
+  title: "Daily News Digest"
+  # Subscribe/unsubscribe page URLs — update these once the website is live
+  subscribe_url: "#"
+  unsubscribe_url: "#"
   # send_immediately: true sends email right after processing
   # Set to false for production and configure a cron schedule
   send_immediately: true

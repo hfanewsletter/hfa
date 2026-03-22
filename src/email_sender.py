@@ -49,6 +49,9 @@ class EmailSender:
             articles=articles,
             date=datetime.now().strftime("%B %d, %Y"),
             total_count=len(articles),
+            title=self.config.title,
+            subscribe_url=self.config.subscribe_url,
+            unsubscribe_url=self.config.unsubscribe_url,
         )
 
     def _send_email(self, recipient: str, subject: str, html_body: str) -> None:

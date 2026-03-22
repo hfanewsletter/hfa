@@ -8,10 +8,10 @@ An automated system that watches a folder for newspaper PDF files, extracts news
 
 1. **You drop a newspaper PDF** into a folder called `inbox/`
 2. **The system detects it automatically** (no button to press)
-3. **AI reads every page** of the newspaper and pulls out only the news articles (ignoring ads, classifieds, weather tables, etc.)
+3. **AI reads every page** of the newspaper and pulls out only the news articles (ignoring ads, classifieds, weather tables, etc.), and assigns each article a category (e.g. Politics, Business, Sports)
 4. **Duplicate stories are removed** — if two newspapers cover the same event, only one version is kept
 5. **Each article is summarized** into 3–4 sentences in the AI's own words
-6. **An email digest is sent** to everyone on the subscriber list, with a link to open the original PDF
+6. **An email digest is sent** to everyone on the subscriber list — articles are grouped by category with navigation links at the top, and the email includes subscribe/unsubscribe links at the bottom
 
 ---
 
@@ -157,6 +157,21 @@ email:
     - person2@example.com
     - manager@company.com
 ```
+
+**Set the digest email title** — this appears as the subject line header and in the email footer:
+```yaml
+email:
+  title: "Daily News Digest"
+```
+Change this to whatever name you want to give the publication (e.g. `"The American Express — Daily Digest"`).
+
+**Set subscribe/unsubscribe URLs** — these appear as links at the bottom of every email:
+```yaml
+email:
+  subscribe_url: "#"
+  unsubscribe_url: "#"
+```
+Replace `"#"` with the actual URLs once your website is live. Until then, the links will be present in the email but won't navigate anywhere.
 
 **Check the AI model** (already set to a working default):
 ```yaml

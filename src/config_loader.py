@@ -31,6 +31,9 @@ class EmailConfig:
     smtp_port: int
     send_immediately: bool
     schedule_cron: str
+    title: str
+    subscribe_url: str
+    unsubscribe_url: str
 
 
 @dataclass
@@ -71,6 +74,9 @@ def load_config(config_path: str = "config/config.yaml") -> AppConfig:
             smtp_port=email_cfg["smtp_port"],
             send_immediately=email_cfg.get("send_immediately", True),
             schedule_cron=email_cfg.get("schedule_cron", "0 8 * * *"),
+            title=email_cfg.get("title", "Daily News Digest"),
+            subscribe_url=email_cfg.get("subscribe_url", "#"),
+            unsubscribe_url=email_cfg.get("unsubscribe_url", "#"),
         ),
         dedup_threshold=raw["deduplication"]["similarity_threshold"],
         log_level=raw.get("logging", {}).get("level", "INFO"),

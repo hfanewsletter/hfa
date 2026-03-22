@@ -10,6 +10,7 @@ class Article:
     content: str          # Full article text
     page_number: int      # Page in the source PDF where article was found
     source_pdf: str       # Absolute path to the source PDF file
+    category: str = "General"  # Category assigned by LLM (e.g. Politics, Business, Sports)
 
 
 @dataclass

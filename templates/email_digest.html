@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>News Digest</title>
+  <title>{{ title }}</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f5f5f5;font-family:Georgia,serif;">
 
@@ -15,7 +15,7 @@
           <!-- Header -->
           <tr>
             <td style="background-color:#1a1a2e;padding:32px 40px;text-align:center;">
-              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:1px;">Daily News Digest</h1>
+              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:1px;">{{ title }}</h1>
               <p style="margin:8px 0 0;color:#a0a8c0;font-size:14px;">{{ date }}</p>
             </td>
           </tr>
@@ -29,11 +29,36 @@
             </td>
           </tr>
 
-          <!-- Articles loop -->
-          {% for item in articles %}
+          <!-- Category Navigation -->
+          {% set categories = articles | map(attribute='article.category') | unique | list %}
+          {% if categories | length > 1 %}
+          <tr>
+            <td style="padding:16px 40px;background-color:#f4f6fb;border-bottom:1px solid #eeeeee;">
+              <p style="margin:0 0 8px;color:#888888;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;">Jump to section</p>
+              <p style="margin:0;line-height:2;">
+                {% for cat in categories %}
+                <a href="#cat-{{ cat | lower | replace(' ', '-') }}"
+                   style="display:inline-block;margin:2px 6px 2px 0;padding:5px 14px;background-color:#1a1a2e;color:#ffffff;text-decoration:none;border-radius:20px;font-size:12px;font-weight:600;font-family:Arial,sans-serif;">{{ cat }}</a>
+                {% endfor %}
+              </p>
+            </td>
+          </tr>
+          {% endif %}
+
+          <!-- Articles grouped by category -->
+          {% for cat, cat_articles in articles | groupby('article.category') %}
+
+          <!-- Category heading anchor -->
+          <tr>
+            <td id="cat-{{ cat | lower | replace(' ', '-') }}"
+                style="padding:20px 40px 8px;background-color:#f9f9fb;border-top:2px solid #1a1a2e;">
+              <h3 style="margin:0;color:#1a1a2e;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:2px;font-family:Arial,sans-serif;">{{ cat }}</h3>
+            </td>
+          </tr>
+
+          {% for item in cat_articles %}
           <tr>
             <td style="padding:28px 40px;{% if not loop.last %}border-bottom:1px solid #eeeeee;{% endif %}">
-              <p style="margin:0 0 6px;color:#888888;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;">Article {{ loop.index }}</p>
               <h2 style="margin:0 0 12px;color:#1a1a2e;font-size:18px;font-weight:700;line-height:1.4;">{{ item.article.title }}</h2>
               <p style="margin:0 0 18px;color:#444444;font-size:15px;line-height:1.75;">{{ item.summary }}</p>
               <a href="{{ item.pdf_link }}" style="display:inline-block;background-color:#1a1a2e;color:#ffffff;text-decoration:none;padding:10px 22px;border-radius:4px;font-size:13px;font-weight:600;">Read Full Article &rarr;</a>
@@ -42,11 +67,18 @@
           </tr>
           {% endfor %}
 
+          {% endfor %}
+
           <!-- Footer -->
           <tr>
             <td style="background-color:#f9f9f9;padding:24px 40px;text-align:center;border-top:1px solid #eeeeee;">
-              <p style="margin:0;color:#999999;font-size:12px;line-height:1.6;">
-                You are receiving this because you are subscribed to the News Digest service.
+              <p style="margin:0 0 10px;color:#999999;font-size:12px;line-height:1.6;">
+                You are receiving this because you are subscribed to the {{ title }} service.
+              </p>
+              <p style="margin:0;font-size:12px;font-family:Arial,sans-serif;">
+                <a href="{{ unsubscribe_url }}" style="color:#888888;text-decoration:underline;">Unsubscribe</a>
+                &nbsp;&bull;&nbsp;
+                <a href="{{ subscribe_url }}" style="color:#1a1a2e;text-decoration:underline;font-weight:600;">Subscribe</a>
               </p>
             </td>
           </tr>
