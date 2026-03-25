@@ -95,6 +95,7 @@ export class SupabaseAdapter implements DBAdapter {
     const { data } = await this.client
       .from('articles')
       .select('category')
+      .neq('category', 'Editorial')
     const cats = [...new Set((data ?? []).map((r: { category: string }) => r.category))]
     return cats.sort()
   }
@@ -102,28 +103,15 @@ export class SupabaseAdapter implements DBAdapter {
   async getHomepageData(): Promise<HomepageData> {
     const today = new Date().toISOString().slice(0, 10) // 'YYYY-MM-DD'
     const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
-    // TODO: REVERT AFTER DEMO — fall back to most recent edition if today has no articles.
-    // Correct behaviour: show empty state when no articles exist for today.
-    let editionStart = today
-    let editionEnd = tomorrow
-    const countRes = await this.client.from('articles').select('id', { count: 'exact', head: true })
-      .gte('published_at', today).lt('published_at', tomorrow)
-    if ((countRes.count ?? 0) === 0) {
-      const latestRes = await this.client.from('articles').select('published_at')
-        .order('published_at', { ascending: false }).limit(1).single()
-      if (latestRes.data) {
-        editionStart = (latestRes.data.published_at as string).slice(0, 10)
-        editionEnd = new Date(new Date(editionStart).getTime() + 86400000).toISOString().slice(0, 10)
-      }
-    }
     const [articlesRes, catsRes] = await Promise.all([
       this.client.from('articles').select('*')
-        .gte('published_at', editionStart)
-        .lt('published_at', editionEnd)
+        .neq('category', 'Editorial')
+        .gte('published_at', today)
+        .lt('published_at', tomorrow)
         .order('importance_score', { ascending: false })
         .order('published_at', { ascending: false })
         .limit(12),
-      this.client.from('articles').select('category'),
+      this.client.from('articles').select('category').neq('category', 'Editorial'),
     ])
 
     const articles = (articlesRes.data ?? []).map(rowToArticle)
@@ -226,6 +214,46 @@ export class SupabaseAdapter implements DBAdapter {
       .order('requested_at', { ascending: false })
       .limit(limit)
     return (data ?? []).map(rowToWeeklyEdition)
+  }
+
+  async getTotalArticleCount(): Promise<number> {
+    const { count } = await this.client
+      .from('articles')
+      .select('id', { count: 'exact', head: true })
+    return count ?? 0
+  }
+
+  async getProcessedPDFCount(): Promise<number> {
+    const { data } = await this.client
+      .from('pdfs')
+      .select('filename')
+      .eq('status', 'processed')
+    // Deduplicate by filename (pipeline may insert multiple records per file)
+    return new Set((data ?? []).map((r: { filename: string }) => r.filename)).size
+  }
+
+  async getEditorialArticles(date: string): Promise<Article[]> {
+    const { data } = await this.client
+      .from('articles')
+      .select('*')
+      .eq('category', 'Editorial')
+      .gte('published_at', `${date}T00:00:00`)
+      .lt('published_at', `${date}T23:59:59`)
+      .order('importance_score', { ascending: false })
+      .order('published_at', { ascending: false })
+    return (data ?? []).map(rowToArticle)
+  }
+
+  async hasEditorialsToday(): Promise<boolean> {
+    const today = new Date().toISOString().slice(0, 10)
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+    const { count } = await this.client
+      .from('articles')
+      .select('id', { count: 'exact', head: true })
+      .eq('category', 'Editorial')
+      .gte('published_at', today)
+      .lt('published_at', tomorrow)
+    return (count ?? 0) > 0
   }
 
   async createWeeklyEditionJob(edition_date: string): Promise<WeeklyEdition> {

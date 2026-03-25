@@ -1,9 +1,9 @@
 # LLM Configuration
 # To switch providers, change 'provider' and update LLM_API_KEY in .env
 llm:
-  provider: gemini           # Options: gemini, openai
-  model: gemini-2.5-flash    # Used for article extraction and summarization
-  embedding_model: gemini-embedding-001  # Used for duplicate detection. Alternative: gemini-embedding-2-preview (multimodal, preview)
+  provider: gemini # Options: gemini, openai
+  model: gemini-2.5-flash # Used for article extraction and summarization
+  embedding_model: gemini-embedding-001 # Used for duplicate detection. Alternative: gemini-embedding-2-preview (multimodal, preview)
 
 # Storage Configuration
 # To switch to cloud storage, change 'provider' and add relevant credentials to .env
@@ -11,6 +11,7 @@ storage:
   provider: local # Options: local, s3, azure, gcs
   inbox_path: ./inbox
   processed_path: ./processed
+  editorial_inbox_path: ./editorial_inbox
 
 # Email Configuration
 email:

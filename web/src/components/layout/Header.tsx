@@ -43,12 +43,19 @@ export default function Header() {
           </div>
 
           {/* Newspaper title */}
-          <h1
-            className="font-serif font-bold leading-none tracking-tight text-center"
-            style={{ fontSize: 'clamp(1.8rem, 5vw, 3.5rem)', letterSpacing: '-0.01em' }}
-          >
-            <span className="text-accent">The American Express</span>{' '}
-            <span className="text-primary">Times</span>
+          <h1 className="font-serif font-bold leading-none tracking-tight text-center">
+            <span
+              className="text-accent"
+              style={{ fontSize: 'clamp(1.8rem, 5vw, 3.5rem)', letterSpacing: '-0.01em' }}
+            >
+              The American Express
+            </span>
+            <span
+              className="text-primary font-normal opacity-60 align-baseline"
+              style={{ fontSize: 'clamp(0.75rem, 1.4vw, 1.15rem)', letterSpacing: '0.08em', marginLeft: '0.4em' }}
+            >
+              Times
+            </span>
           </h1>
 
           {/* Logo icon — mirrored right side, visible on md+ */}

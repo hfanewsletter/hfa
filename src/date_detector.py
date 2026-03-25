@@ -29,8 +29,11 @@ MONTH_PATTERN = '|'.join(MONTH_NAMES.keys())
 
 def detect_newspaper_date(filename: str, pdf_bytes: Optional[bytes] = None) -> Optional[date]:
     """
-    Try to detect the publication date from filename, then PDF metadata.
-    Returns a date object or None if detection fails.
+    Try to detect the publication date using these fallbacks in order:
+      1. Filename patterns
+      2. PDF metadata (creationDate / modDate)
+      3. Text content of the first page (works for text-based PDFs)
+    Returns a date object or None if all three fail.
     """
     detected = _parse_filename_date(filename)
     if detected:
@@ -43,7 +46,12 @@ def detect_newspaper_date(filename: str, pdf_bytes: Optional[bytes] = None) -> O
             logger.info("Detected newspaper date from PDF metadata: %s", detected)
             return detected
 
-    logger.info("Could not detect newspaper date from '%s'", filename)
+        detected = _parse_pdf_first_page_text(pdf_bytes)
+        if detected:
+            logger.info("Detected newspaper date from first page text: %s", detected)
+            return detected
+
+    logger.info("Could not detect newspaper date from '%s' via filename/metadata/text", filename)
     return None
 
 
@@ -111,6 +119,31 @@ def _parse_pdf_metadata_date(pdf_bytes: bytes) -> Optional[date]:
             return _make_date(int(date_str[:4]), int(date_str[4:6]), int(date_str[6:8]))
     except Exception as e:
         logger.debug("PDF metadata date parse failed: %s", e)
+    return None
+
+
+def _parse_pdf_first_page_text(pdf_bytes: bytes) -> Optional[date]:
+    """
+    Extract the publication date from the text content of the first page.
+    Newspapers print their date in the masthead (e.g. 'Tuesday 25 March 2026').
+    Only works for text-based PDFs; returns None for scanned/image PDFs.
+    """
+    try:
+        import fitz
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        if not doc.page_count:
+            doc.close()
+            return None
+        # Focus on the top portion of page 1 where the masthead date lives
+        page = doc[0]
+        text = page.get_text()
+        doc.close()
+        if not text.strip():
+            return None
+        # Reuse the same date patterns as filename parsing
+        return _parse_filename_date(text)
+    except Exception as e:
+        logger.debug("PDF first page text date parse failed: %s", e)
     return None
 
 

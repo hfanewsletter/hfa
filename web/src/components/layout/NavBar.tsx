@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 
 interface NavBarProps {
   categories: string[]
+  hasEditorialsToday?: boolean
 }
 
 // Editorial priority order: hard news → national/local → lifestyle → opinion → catch-all
@@ -32,13 +33,8 @@ function sortCategories(cats: string[]): string[] {
   })
 }
 
-const STATIC_LINKS = [
-  { label: 'Home',         href: '/' },
-  { label: 'Archive',      href: '/archive' },
-  { label: 'Email Digests', href: '/newsletter' },
-]
 
-export default function NavBar({ categories }: NavBarProps) {
+export default function NavBar({ categories, hasEditorialsToday = false }: NavBarProps) {
   const pathname = usePathname()
 
   function categoryHref(cat: string) {
@@ -55,25 +51,43 @@ export default function NavBar({ categories }: NavBarProps) {
       {/* ── Row 1: Primary links ── */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 flex items-center">
-          {STATIC_LINKS.map(l => {
-            const active = l.href === '/'
-              ? pathname === '/'
-              : pathname.startsWith(l.href)
-            return (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={`
-                  whitespace-nowrap px-4 py-3 text-sm font-bold transition-colors border-b-2
-                  ${active
-                    ? 'text-accent border-accent'
-                    : 'text-gray-700 border-transparent hover:text-accent hover:border-accent'}
-                `}
-              >
-                {l.label}
-              </Link>
-            )
-          })}
+          {/* Home */}
+          <Link
+            href="/"
+            className={`whitespace-nowrap px-4 py-3 text-sm font-bold transition-colors border-b-2
+              ${pathname === '/' ? 'text-accent border-accent' : 'text-gray-700 border-transparent hover:text-accent hover:border-accent'}`}
+          >
+            Home
+          </Link>
+
+          {/* Editorial — visible only when there are editorials today */}
+          {hasEditorialsToday && (
+            <Link
+              href="/editorial"
+              className={`whitespace-nowrap px-4 py-3 text-sm font-bold transition-colors border-b-2
+                ${pathname === '/editorial' ? 'text-accent border-accent' : 'text-gray-700 border-transparent hover:text-accent hover:border-accent'}`}
+            >
+              Editorial
+            </Link>
+          )}
+
+          {/* Email Digests */}
+          <Link
+            href="/newsletter"
+            className={`whitespace-nowrap px-4 py-3 text-sm font-bold transition-colors border-b-2
+              ${pathname.startsWith('/newsletter') ? 'text-accent border-accent' : 'text-gray-700 border-transparent hover:text-accent hover:border-accent'}`}
+          >
+            Email Digests
+          </Link>
+
+          {/* Archive */}
+          <Link
+            href="/archive"
+            className={`whitespace-nowrap px-4 py-3 text-sm font-bold transition-colors border-b-2
+              ${pathname.startsWith('/archive') ? 'text-accent border-accent' : 'text-gray-700 border-transparent hover:text-accent hover:border-accent'}`}
+          >
+            Archive
+          </Link>
         </div>
       </div>
 

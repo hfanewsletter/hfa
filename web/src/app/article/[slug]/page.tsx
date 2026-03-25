@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getDB } from '@/lib/db'
-import { categoryColor, categoryGradient, formatDate } from '@/lib/utils'
+import { categoryColor, formatDate } from '@/lib/utils'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -49,18 +49,7 @@ export default async function ArticlePage({ params }: Props) {
             </Link>
           </div>
 
-          {/* Article hero image — real thumbnail if available, else thin category stripe */}
-          {article.image_url ? (
-            <div className="relative w-full h-64 md:h-80 rounded-t overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={article.image_url} alt={article.title} className="w-full h-full object-cover" />
-              <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
-            </div>
-          ) : (
-            <div className={`w-full h-8 bg-gradient-to-r ${categoryGradient(article.category)} rounded-t`} />
-          )}
-
-          <div className="bg-white border border-t-0 border-gray-200 rounded-b p-6 md:p-8">
+          <div className="bg-white border border-gray-200 border-t-4 border-t-accent rounded p-6 md:p-8">
             <span className={`section-tag ${categoryColor(article.category)} mb-4 inline-block`}>
               {article.category}
             </span>

@@ -48,9 +48,12 @@ function ProcessingBar({ filename }: { filename: string }) {
   )
 }
 
+const PAGE_SIZE = 5
+
 export default function PDFList({ refreshTrigger }: { refreshTrigger?: number }) {
   const [pdfs, setPdfs] = useState<PDFRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(1)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function fetchPdfs(showLoading = false) {
@@ -77,6 +80,7 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
   // Fetch on mount and whenever the refresh trigger fires
   useEffect(() => {
     fetchPdfs(true)
+    setPage(1)
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
@@ -94,6 +98,10 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
   ).sort((a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
 
   const activePdfs = deduped.filter(p => p.status === 'pending' || p.status === 'processing')
+
+  const totalPages = Math.max(1, Math.ceil(deduped.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const paginated = deduped.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   return (
     <div className="space-y-4">
@@ -138,38 +146,73 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
         ) : deduped.length === 0 ? (
           <p className="text-sm text-gray-400 px-5 py-8 text-center">No PDFs uploaded yet.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
-            {deduped.map(pdf => (
-              <div key={pdf.id ?? pdf.filename} className="px-5 py-4 flex items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{pdf.filename}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Uploaded {formatShortDate(pdf.uploaded_at)}
-                    {pdf.processed_at && ` · Processed ${formatShortDate(pdf.processed_at)}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  {pdf.article_count > 0 && (
-                    <span className="text-xs text-gray-500 font-medium">
-                      {pdf.article_count} article{pdf.article_count !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded capitalize
-                    ${STATUS_STYLES[pdf.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                    {pdf.status === 'processing' ? (
-                      <span className="flex items-center gap-1">
-                        <svg className="animate-spin h-2.5 w-2.5" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                        </svg>
-                        processing
+          <>
+            <div className="divide-y divide-gray-100">
+              {paginated.map(pdf => (
+                <div key={pdf.id ?? pdf.filename} className="px-5 py-4 flex items-center gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{pdf.filename}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Uploaded {formatShortDate(pdf.uploaded_at)}
+                      {pdf.processed_at && ` · Processed ${formatShortDate(pdf.processed_at)}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {pdf.article_count > 0 && (
+                      <span className="text-xs text-gray-500 font-medium">
+                        {pdf.article_count} article{pdf.article_count !== 1 ? 's' : ''}
                       </span>
-                    ) : pdf.status}
+                    )}
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded capitalize
+                      ${STATUS_STYLES[pdf.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {pdf.status === 'processing' ? (
+                        <span className="flex items-center gap-1">
+                          <svg className="animate-spin h-2.5 w-2.5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                          processing
+                        </span>
+                      ) : pdf.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination controls */}
+            {totalPages > 1 && (
+              <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-xs text-gray-400">
+                  Page {currentPage} of {totalPages}
+                  <span className="ml-2 text-gray-300">·</span>
+                  <span className="ml-2">
+                    {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, deduped.length)} of {deduped.length}
                   </span>
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-2.5 py-1 text-xs font-medium rounded border border-gray-200
+                               text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed
+                               transition-colors"
+                  >
+                    ← Prev
+                  </button>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-2.5 py-1 text-xs font-medium rounded border border-gray-200
+                               text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed
+                               transition-colors"
+                  >
+                    Next →
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>

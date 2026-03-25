@@ -77,6 +77,20 @@ class Pipeline:
         if pdf_paths is None:
             pdf_paths = self.storage.list_new_files()
 
+        # Also scan editorial inbox (separate folder, articles forced to "Editorial" category)
+        editorial_pdf_set: Set[str] = set()
+        editorial_inbox = self.config.storage.editorial_inbox_path
+        if editorial_inbox:
+            abs_editorial = os.path.abspath(editorial_inbox)
+            os.makedirs(abs_editorial, exist_ok=True)
+            editorial_files = sorted([
+                os.path.join(abs_editorial, f)
+                for f in os.listdir(abs_editorial)
+                if f.lower().endswith(".pdf")
+            ])
+            editorial_pdf_set = set(editorial_files)
+            pdf_paths = list(pdf_paths) + editorial_files
+
         if not pdf_paths:
             logger.info("No new PDFs to process.")
             return
@@ -102,8 +116,20 @@ class Pipeline:
                 pdf_bytes = self.storage.read_file(pdf_path)
                 pdf_bytes_cache[pdf_path] = pdf_bytes
 
-                # Detect newspaper publication date from filename / PDF metadata
+                # Detect newspaper publication date:
+                # 1. filename  2. PDF metadata  3. first page text  4. Gemini reads front page
                 newspaper_date = detect_newspaper_date(filename, pdf_bytes)
+                if not newspaper_date:
+                    first_page_img = self.pdf_processor.render_first_page(pdf_bytes)
+                    if first_page_img:
+                        try:
+                            newspaper_date = self.llm.extract_newspaper_date(first_page_img)
+                            if newspaper_date:
+                                logger.info(
+                                    "Detected newspaper date via Gemini front-page scan: %s", newspaper_date
+                                )
+                        except Exception as e:
+                            logger.debug("Gemini date fallback failed for '%s': %s", filename, e)
                 if newspaper_date:
                     pdf_newspaper_dates[pdf_path] = newspaper_date
                     age_days = (date.today() - newspaper_date).days
@@ -125,6 +151,10 @@ class Pipeline:
 
                 articles = self.extractor.extract_from_pdf(pdf_bytes, pdf_path)
                 logger.info("Extracted %d articles from '%s'", len(articles), filename)
+                # Force category for editorial PDFs
+                if pdf_path in editorial_pdf_set:
+                    for a in articles:
+                        a.category = "Editorial"
                 all_articles.extend(articles)
 
             except Exception as e:
@@ -144,7 +174,22 @@ class Pipeline:
         logger.info("Total articles extracted: %d across %d PDF(s)", len(all_articles), len(pdf_paths))
 
         # --- Stage 2: Group same-story articles across all PDFs ---
-        groups = self.rewriter.group_by_story(all_articles)
+        # Editorial articles skip cross-paper grouping — each is its own story
+        regular_articles = [a for a in all_articles if a.source_pdf not in editorial_pdf_set]
+        editorial_articles = [a for a in all_articles if a.source_pdf in editorial_pdf_set]
+
+        groups = self.rewriter.group_by_story(regular_articles)
+
+        # Add editorial articles as individual single-article groups
+        if editorial_articles:
+            logger.info("Adding %d editorial article(s) as individual groups", len(editorial_articles))
+            for article in editorial_articles:
+                embed_text = f"{article.title}\n\n{article.content[:2000]}"
+                try:
+                    embedding = self.llm.get_embedding(embed_text)
+                    groups.append(([article], embedding))
+                except Exception as e:
+                    logger.error("Failed to embed editorial article '%s': %s", article.title, e)
 
         # --- Stage 3-7: Per-group: dedup → rewrite → summarize → save ---
         processed: List[ProcessedArticle] = []

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from datetime import date
+from typing import List, Dict, Any, Optional
 from src.models import Article
 
 
@@ -47,6 +48,14 @@ class LLMProvider(ABC):
         present all significant viewpoints without favouring any one source.
 
         Returns a plain string (the rewritten article body, no title).
+        """
+
+    @abstractmethod
+    def extract_newspaper_date(self, first_page_image: bytes) -> Optional[date]:
+        """
+        Extract the publication date from a newspaper's front-page image.
+        Called when filename and text-based detection both fail (image/scanned PDFs).
+        Returns a date object, or None if the date cannot be determined.
         """
 
     @abstractmethod

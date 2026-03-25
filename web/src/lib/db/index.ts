@@ -25,6 +25,10 @@ export interface DBAdapter {
   deleteSchedule(id: number): Promise<void>
   getWeeklyEditions(limit?: number): Promise<WeeklyEdition[]>
   createWeeklyEditionJob(edition_date: string): Promise<WeeklyEdition>
+  getEditorialArticles(date: string): Promise<Article[]>
+  hasEditorialsToday(): Promise<boolean>
+  getTotalArticleCount(): Promise<number>
+  getProcessedPDFCount(): Promise<number>
 }
 
 let _adapter: DBAdapter | null = null

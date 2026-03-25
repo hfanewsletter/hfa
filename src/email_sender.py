@@ -52,6 +52,7 @@ class EmailSender:
             title=self.config.title,
             subscribe_url=self.config.subscribe_url,
             unsubscribe_url=self.config.unsubscribe_url,
+            website_base_url=self.config.website_base_url,
         )
 
     def _send_email(self, recipient: str, subject: str, html_body: str) -> None:

@@ -24,14 +24,25 @@ async function getCategories() {
   }
 }
 
+async function getHasEditorialsToday() {
+  try {
+    return await getDB().hasEditorialsToday()
+  } catch {
+    return false
+  }
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const categories = await getCategories()
+  const [categories, hasEditorialsToday] = await Promise.all([
+    getCategories(),
+    getHasEditorialsToday(),
+  ])
 
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col">
         <Header />
-        <NavBar categories={categories} />
+        <NavBar categories={categories} hasEditorialsToday={hasEditorialsToday} />
         <main className="flex-1">{children}</main>
         <Footer />
       </body>

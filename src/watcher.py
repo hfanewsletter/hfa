@@ -79,6 +79,14 @@ class FolderWatcher:
         handler = PDFHandler(self.pipeline)
         observer = Observer()
         observer.schedule(handler, self.inbox_path, recursive=False)
+
+        editorial_inbox = getattr(self.config.storage, "editorial_inbox_path", "")
+        if editorial_inbox:
+            abs_editorial = os.path.abspath(editorial_inbox)
+            os.makedirs(abs_editorial, exist_ok=True)
+            observer.schedule(handler, abs_editorial, recursive=False)
+            logger.info("Watching for editorial PDFs in: %s", abs_editorial)
+
         observer.start()
 
         logger.info("Watching for PDFs in: %s", self.inbox_path)

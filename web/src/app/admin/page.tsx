@@ -15,12 +15,10 @@ export default async function AdminPage() {
   let articleCount = 0
   let pdfCount = 0
   try {
-    const [articles, pdfs] = await Promise.all([
-      getDB().getLatestArticles(1000),
-      getDB().getPDFs(),
+    ;[articleCount, pdfCount] = await Promise.all([
+      getDB().getTotalArticleCount(),
+      getDB().getProcessedPDFCount(),
     ])
-    articleCount = articles.length
-    pdfCount = pdfs.length
   } catch { /* DB not initialised yet */ }
 
   return (

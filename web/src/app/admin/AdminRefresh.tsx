@@ -10,6 +10,11 @@ export default function AdminRefresh() {
   return (
     <div className="space-y-8">
       <UploadForm onUploadDone={() => setRefreshTick(t => t + 1)} />
+      <UploadForm
+        uploadUrl="/api/admin/upload-editorial"
+        title="Upload Editorial PDFs"
+        description="Drop editorial or opinion PDFs here. Articles will appear under the Editorial section and be included in the email digest."
+      />
       <PDFList refreshTrigger={refreshTick} />
       <ScheduleManager />
     </div>

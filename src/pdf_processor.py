@@ -66,6 +66,24 @@ class PDFProcessor:
             })
         return pages
 
+    def render_first_page(self, pdf_bytes: bytes) -> Optional[bytes]:
+        """
+        Render the first page as a PNG image.
+        Used as a fallback for LLM-based newspaper date extraction on image PDFs.
+        """
+        try:
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            try:
+                if not doc.page_count:
+                    return None
+                pixmap = doc[0].get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+                return pixmap.tobytes("png")
+            finally:
+                doc.close()
+        except Exception as e:
+            logger.debug("Could not render first page: %s", e)
+        return None
+
     def extract_page_thumbnail(
         self, pdf_bytes: bytes, page_number: int, target_width: int = 800
     ) -> Optional[bytes]:

@@ -30,6 +30,7 @@ class StorageConfig:
     provider: str        # "local", "s3", "azure", "gcs"
     inbox_path: str
     processed_path: str
+    editorial_inbox_path: str = ""
 
 
 @dataclass
@@ -45,6 +46,7 @@ class EmailConfig:
     newspaper_name: str
     subscribe_url: str
     unsubscribe_url: str
+    website_base_url: str
 
 
 @dataclass
@@ -82,6 +84,10 @@ def load_config(config_path: str = "config/config.yaml") -> AppConfig:
             provider=os.getenv("STORAGE_PROVIDER", storage_cfg["provider"]),
             inbox_path=os.getenv("INBOX_PATH", storage_cfg["inbox_path"]),
             processed_path=storage_cfg["processed_path"],
+            editorial_inbox_path=os.getenv(
+                "EDITORIAL_INBOX_PATH",
+                storage_cfg.get("editorial_inbox_path", "")
+            ),
         ),
         email=EmailConfig(
             sender=os.getenv("EMAIL_SENDER", ""),
@@ -95,6 +101,7 @@ def load_config(config_path: str = "config/config.yaml") -> AppConfig:
             newspaper_name=email_cfg.get("newspaper_name", "The American Express Times"),
             subscribe_url=email_cfg.get("subscribe_url", "#"),
             unsubscribe_url=email_cfg.get("unsubscribe_url", "#"),
+            website_base_url=os.getenv("WEBSITE_BASE_URL", website_cfg.get("base_url", "http://localhost:3000")),
         ),
         website=WebsiteConfig(
             base_url=os.getenv("WEBSITE_BASE_URL", website_cfg.get("base_url", "http://localhost:3000")),

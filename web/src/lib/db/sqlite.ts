@@ -120,7 +120,7 @@ export class SQLiteAdapter implements DBAdapter {
   async getCategories(): Promise<string[]> {
     const db = openDB()
     const rows = db.prepare(
-      'SELECT DISTINCT category FROM articles ORDER BY category'
+      "SELECT DISTINCT category FROM articles WHERE category != 'Editorial' ORDER BY category"
     ).all() as { category: string }[]
     db.close()
     return rows.map(r => r.category)
@@ -130,23 +130,12 @@ export class SQLiteAdapter implements DBAdapter {
     const db = openDB()
 
     const today = new Date().toISOString().slice(0, 10) // 'YYYY-MM-DD'
-    // TODO: REVERT AFTER DEMO — fall back to most recent edition if today has no articles.
-    // Correct behaviour: show empty state when no articles exist for today.
-    let todayArticles = db.prepare(
-      `SELECT * FROM articles WHERE DATE(published_at) = ? ORDER BY importance_score DESC, published_at DESC LIMIT 12`
+    const latest = db.prepare(
+      `SELECT * FROM articles WHERE DATE(published_at) = ? AND category != 'Editorial' ORDER BY importance_score DESC, published_at DESC LIMIT 12`
     ).all(today) as Record<string, unknown>[]
-    if (todayArticles.length === 0) {
-      const latestDate = (db.prepare(`SELECT DATE(MAX(published_at)) as d FROM articles`).get() as { d: string | null })?.d
-      if (latestDate) {
-        todayArticles = db.prepare(
-          `SELECT * FROM articles WHERE DATE(published_at) = ? ORDER BY importance_score DESC, published_at DESC LIMIT 12`
-        ).all(latestDate) as Record<string, unknown>[]
-      }
-    }
-    const latest = todayArticles
 
     const catRows = db.prepare(
-      'SELECT DISTINCT category FROM articles ORDER BY category'
+      "SELECT DISTINCT category FROM articles WHERE category != 'Editorial' ORDER BY category"
     ).all() as { category: string }[]
 
     db.close()
@@ -294,6 +283,41 @@ export class SQLiteAdapter implements DBAdapter {
       db.close()
       return []
     }
+  }
+
+  async getTotalArticleCount(): Promise<number> {
+    const db = openDB()
+    const row = db.prepare('SELECT COUNT(*) as count FROM articles').get() as { count: number }
+    db.close()
+    return row.count
+  }
+
+  async getProcessedPDFCount(): Promise<number> {
+    const db = openDB()
+    const row = db.prepare(
+      "SELECT COUNT(DISTINCT filename) as count FROM pdfs WHERE status = 'processed'"
+    ).get() as { count: number }
+    db.close()
+    return row.count
+  }
+
+  async getEditorialArticles(date: string): Promise<Article[]> {
+    const db = openDB()
+    const rows = db.prepare(
+      `SELECT * FROM articles WHERE category = 'Editorial' AND DATE(published_at) = ? ORDER BY importance_score DESC, published_at DESC`
+    ).all(date) as Record<string, unknown>[]
+    db.close()
+    return rows.map(rowToArticle)
+  }
+
+  async hasEditorialsToday(): Promise<boolean> {
+    const db = openDB()
+    const today = new Date().toISOString().slice(0, 10)
+    const row = db.prepare(
+      `SELECT COUNT(*) as count FROM articles WHERE category = 'Editorial' AND DATE(published_at) = ?`
+    ).get(today) as { count: number }
+    db.close()
+    return row.count > 0
   }
 
   async createWeeklyEditionJob(edition_date: string): Promise<WeeklyEdition> {

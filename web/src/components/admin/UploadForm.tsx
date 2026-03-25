@@ -7,7 +7,17 @@ interface UploadResult {
   message?: string
 }
 
-export default function UploadForm({ onUploadDone }: { onUploadDone?: () => void }) {
+export default function UploadForm({
+  onUploadDone,
+  uploadUrl = '/api/admin/upload',
+  title = 'Upload PDFs',
+  description = 'Drop one or more newspaper PDFs. The pipeline will extract, group, and rewrite all articles automatically.',
+}: {
+  onUploadDone?: () => void
+  uploadUrl?: string
+  title?: string
+  description?: string
+}) {
   const [files, setFiles] = useState<FileList | null>(null)
   const [results, setResults] = useState<UploadResult[]>([])
   const [uploading, setUploading] = useState(false)
@@ -29,7 +39,7 @@ export default function UploadForm({ onUploadDone }: { onUploadDone?: () => void
       fd.append('pdf', file)
 
       try {
-        const res = await fetch('/api/admin/upload', { method: 'POST', body: fd })
+        const res = await fetch(uploadUrl, { method: 'POST', body: fd })
         if (res.status === 401) {
           window.location.href = '/admin/login'
           return
@@ -67,10 +77,8 @@ export default function UploadForm({ onUploadDone }: { onUploadDone?: () => void
 
   return (
     <div className="bg-white rounded border border-gray-200 p-6">
-      <h2 className="font-serif text-lg font-bold text-primary mb-1">Upload PDFs</h2>
-      <p className="text-gray-400 text-xs mb-5">
-        Drop one or more newspaper PDFs. The pipeline will extract, group, and rewrite all articles automatically.
-      </p>
+      <h2 className="font-serif text-lg font-bold text-primary mb-1">{title}</h2>
+      <p className="text-gray-400 text-xs mb-5">{description}</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div

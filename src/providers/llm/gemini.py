@@ -2,6 +2,7 @@ import json
 import logging
 import time
 import concurrent.futures
+from datetime import date
 from typing import List, Dict, Any, Optional
 from google import genai
 from google.genai import types
@@ -14,10 +15,10 @@ logger = logging.getLogger(__name__)
 
 TEXT_CHUNK_SIZE = 4   # Pages per API call for text PDFs
 IMAGE_CHUNK_SIZE = 2  # Pages per API call for image PDFs (larger payloads)
-MAX_CONCURRENT = 5    # Parallel Gemini API calls
+MAX_CONCURRENT = 3    # Parallel Gemini API calls (lower = less API pressure under load)
 REQUEST_TIMEOUT = 90  # Seconds before a single API call is considered hung
-MAX_RETRIES = 3       # Retry attempts per chunk on transient failures
-RETRY_BACKOFF = [5, 15, 30]  # Seconds to wait between retries
+MAX_RETRIES = 5       # Retry attempts per chunk on transient failures
+RETRY_BACKOFF = [5, 15, 30, 60, 120]  # Seconds to wait between retries
 
 
 class GeminiProvider(LLMProvider):
@@ -42,6 +43,8 @@ class GeminiProvider(LLMProvider):
                     model=self.model_name,
                     contents=contents,
                 )
+                if not response.text:
+                    raise ValueError("Gemini returned empty response text (possibly blocked by safety filter)")
                 return response.text
             except genai_errors.ClientError as e:
                 status = e.status_code if hasattr(e, "status_code") else 0
@@ -284,6 +287,26 @@ SOURCE MATERIAL ({num_sources} source{'s' if num_sources > 1 else ''}):
 Write only the article body, nothing else.
 """
         return self._call_with_retry(prompt).strip()
+
+    def extract_newspaper_date(self, first_page_image: bytes) -> Optional[date]:
+        """Ask Gemini to read the publication date from the newspaper's front page."""
+        prompt = (
+            "This is the front page of a newspaper. "
+            "Find the publication date printed on it (usually in the masthead near the top). "
+            "Return ONLY the date in ISO format: YYYY-MM-DD\n"
+            "If you cannot find a clear date, return: null"
+        )
+        contents = [prompt, types.Part.from_bytes(data=first_page_image, mime_type="image/png")]
+        try:
+            text = self._call_with_retry(contents).strip()
+            if not text or text.lower() == "null":
+                return None
+            parts = text.split("-")
+            if len(parts) == 3:
+                return date(int(parts[0]), int(parts[1]), int(parts[2]))
+        except Exception as e:
+            logger.debug("Gemini newspaper date extraction failed: %s", e)
+        return None
 
     def summarize(self, rewritten_content: str) -> str:
         prompt = f"""Summarize the following news article in exactly 4 to 5 sentences for an email newsletter.

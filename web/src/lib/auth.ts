@@ -35,6 +35,21 @@ function verifyToken(token: string): boolean {
 /** Verify a submitted password and return a signed session token if correct. */
 export function createSession(password: string): string | null {
   const expected = process.env.ADMIN_PASSWORD
+
+  // Warn loudly in logs if the password is dangerously weak
+  if (expected && expected.length < 16) {
+    console.warn(
+      '[SECURITY] ADMIN_PASSWORD is fewer than 16 characters. ' +
+      'Use a randomly generated password of at least 20 characters in production.'
+    )
+  }
+  if (expected === 'changeme' || expected === 'password' || expected === 'admin') {
+    console.error(
+      '[SECURITY] ADMIN_PASSWORD is set to a known default value. ' +
+      'Change it immediately before deploying to production.'
+    )
+  }
+
   if (!expected || password !== expected) return null
   return makeToken(password)
 }
