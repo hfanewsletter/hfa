@@ -502,3 +502,7 @@ No code changes are needed — the provider abstraction handles the rest.
 ## Support
 
 Check `logs/app.log` first — it contains a timestamped record of every pipeline step, API call, and error.
+
+---
+
+Built by [Tanmay Karmakar](mailto:tableaulancer@gmail.com)
