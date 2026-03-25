@@ -1,30 +1,31 @@
-# Newspaper PDF Processor
+# The American Express Times — Newspaper Pipeline
 
-An automated system that watches a folder for newspaper PDF files, extracts news articles using AI, deduplicates cross-publication stories, rewrites each into a single unified article, and emails a digest to subscribers. A Next.js website displays all articles with a full archive, and a weekly PDF newspaper can be generated automatically on a schedule.
+An automated system that watches a folder for newspaper PDF files, extracts news articles using AI, deduplicates cross-publication stories, rewrites each into a single unified article, and emails a digest to subscribers. A Next.js website displays all articles with a full archive. Editorial content is handled via a separate inbox with its own admin upload and dedicated website section.
 
 ---
 
 ## What It Does — In Plain English
 
-1. **You drop one or more newspaper PDFs** into the `inbox/` folder (or upload via the admin panel)
+1. **Drop one or more newspaper PDFs** into the `inbox/` folder (or upload via the admin panel)
 2. **The system detects them automatically** and batches all PDFs dropped at roughly the same time
-3. **The newspaper's publication date is detected** from the filename or PDF metadata — old papers are archived with the correct date rather than today's date, and excluded from the email digest
+3. **The publication date is detected** using a 4-step chain: filename → PDF metadata → first page text → Gemini Vision scan. Old papers are archived with the correct date rather than today's
 4. **AI reads every page** — text PDFs are processed directly; scanned/image PDFs go through Gemini Vision OCR. Ads, classifieds, weather tables, and puzzles are ignored
-5. **Same-story articles are grouped** — if three newspapers all cover the same event, all versions are read together and assigned a category (e.g. Politics, Business, Sports)
-6. **Each story is assigned an importance score (1–10)** by the AI, then boosted if multiple papers covered the same story (cross-paper consensus). Score ≥ 9 becomes Breaking News
-7. **Each story is rewritten** into a single original 300–500 word article, factually accurate and unbiased, presenting all sides
-8. **Already-published stories are skipped** — if the same story ran in a previous batch, it won't be republished
+5. **Same-story articles are grouped** — if three newspapers all cover the same event, all versions are read together
+6. **Each story is assigned an importance score (1–10)** by the AI, then boosted +0.5 per additional paper that covered the same story (cross-paper consensus). Score ≥ 9 becomes Breaking News
+7. **Each story is rewritten** into a single original 300–500 word article — factually accurate, unbiased, presenting all sides
+8. **Already-published stories are skipped** — semantic deduplication compares embeddings against every previously published article
 9. **A 4–5 sentence email summary** is generated from the rewritten article
-10. **An email digest is sent** to all subscribers — articles grouped by category, each "Read Full Article" link pointing to the website
-11. **The full rewritten articles are saved** to the database and appear on the website, sorted by importance
-12. **The website archive** preserves every edition — readers can browse any past date
-13. **A weekly PDF newspaper** can be auto-generated on a cron schedule or triggered manually
+10. **An email digest is sent** to all subscribers — articles grouped by category, each linking to the full article on the website
+11. **Editorial PDFs** dropped into `editorial_inbox/` are processed separately — no cross-paper grouping, forced "Editorial" category, shown only on the `/editorial` page but included in the email digest
+12. **The full rewritten articles are saved** to the database and appear on the website, sorted by importance
+13. **The archive** preserves every edition — readers can browse any past date
+14. **A weekly PDF newspaper** can be auto-generated on a cron schedule or triggered manually from the admin panel
 
 ---
 
 ## Prerequisites
 
-Before running the app you need accounts and credentials for two external services. Gather these **before** starting setup.
+Before running the app, gather credentials for two external services.
 
 ### 1. Google Gemini API Key (required — powers the AI)
 
@@ -43,7 +44,7 @@ Gmail blocks direct password login from code. You need a special 16-character Ap
 2. Enable **2-Step Verification** if it is not already on
 3. Search for **"App passwords"** on the Security page
 4. Create a new App Password (select "Mail" + "Other") — copy the 16-character code
-5. You will paste your Gmail address as `EMAIL_SENDER` and the 16-character code as `EMAIL_PASSWORD` in `.env`
+5. Paste your Gmail address as `EMAIL_SENDER` and the 16-character code as `EMAIL_PASSWORD` in `.env`
 
 > **Do not use your regular Gmail password** — it will not work and may lock your account.
 
@@ -73,8 +74,6 @@ git --version
 
 ### 4. WeasyPrint system libraries (required for weekly PDF generation only)
 
-WeasyPrint (the PDF renderer) needs system-level font and graphics libraries.
-
 **Mac:**
 ```bash
 brew install pango cairo
@@ -83,13 +82,13 @@ brew install pango cairo
 ```bash
 sudo apt-get install libpango-1.0-0 libcairo2
 ```
-**Windows:** WeasyPrint installs without extra steps on most Windows machines. If you see errors, see the [WeasyPrint docs](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#windows).
+**Windows:** WeasyPrint installs without extra steps on most machines. If you see errors, see the [WeasyPrint docs](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#windows).
 
 ---
 
-## Quick Start (Recommended)
+## Quick Start
 
-Once you have all the prerequisites above, starting the entire app is a single command.
+Once you have the prerequisites above, starting the entire app is a single command.
 
 **Mac / Linux:**
 ```bash
@@ -109,17 +108,17 @@ The script will:
 - Create a Python virtual environment if one does not exist
 - Install all Python and Node.js dependencies automatically
 - Create `.env` and `web/.env.local` from the example templates if they are missing
-- Create all required folders (`inbox/`, `processed/`, `logs/`, `data/`)
+- Create all required folders (`inbox/`, `editorial_inbox/`, `processed/`, `logs/`, `data/`)
 - Start the Python pipeline worker in the background
 - Start the Next.js website at **http://localhost:3001**
 
-> **First run only:** The script will pause and ask you to fill in `.env` with your API key and email credentials before continuing. Open `.env` in any text editor, fill in the three required fields, save, then press Enter to continue.
+> **First run only:** The script will pause and ask you to fill in `.env` with your API key and email credentials before continuing. Open `.env` in any text editor, fill in the required fields, save, then press Enter to continue.
 
-Press **Ctrl + C** to stop everything (Mac/Linux). On Windows, close both the web server window and the Python Worker window.
+Press **Ctrl + C** to stop everything (Mac/Linux). On Windows, close both the web server window and the Python worker window.
 
 ---
 
-## Configuration Before Running
+## Configuration
 
 ### Required — `.env` (credentials)
 
@@ -131,9 +130,13 @@ LLM_API_KEY=paste_your_gemini_api_key_here
 EMAIL_SENDER=your_gmail_address@gmail.com
 EMAIL_PASSWORD=your_16_char_gmail_app_password
 
+# ── REQUIRED FOR PRODUCTION ───────────────────────────────────
+# Generate a strong password: openssl rand -base64 20
+# The app blocks login after 5 failed attempts per 15 minutes.
+ADMIN_PASSWORD=CHANGE_THIS_TO_A_STRONG_RANDOM_PASSWORD
+
 # ── OPTIONAL (defaults work for local dev) ───────────────────
 WEBSITE_BASE_URL=http://localhost:3001   # change to your domain in production
-ADMIN_PASSWORD=changeme                  # password for the /admin panel — change this!
 
 # ── LEAVE BLANK for local dev (SQLite is used automatically) ─
 SUPABASE_URL=
@@ -146,7 +149,7 @@ SUPABASE_STORAGE_BUCKET=
 | `LLM_API_KEY` | **Yes** | Your Gemini API key from Google AI Studio |
 | `EMAIL_SENDER` | **Yes** | Gmail address the digest is sent from |
 | `EMAIL_PASSWORD` | **Yes** | Gmail App Password (16-char code, not your real password) |
-| `ADMIN_PASSWORD` | Recommended | Password for `/admin` on the website. Defaults to `changeme` — set something real |
+| `ADMIN_PASSWORD` | **Yes** | Password for `/admin`. Must be 20+ random characters in production. Generate with `openssl rand -base64 20` |
 | `WEBSITE_BASE_URL` | No | Base URL for "Read Full Article" links in the email. Defaults to `http://localhost:3001` |
 | `SUPABASE_URL` | Production only | Leave blank for local dev |
 | `SUPABASE_KEY` | Production only | Leave blank for local dev |
@@ -154,57 +157,40 @@ SUPABASE_STORAGE_BUCKET=
 
 ### Required — `config/config.yaml` (application settings)
 
-Open `config/config.yaml` in a text editor. These are the settings you are most likely to need to change:
-
-#### Subscriber list — who receives the digest email
+#### Subscriber list
 ```yaml
 email:
   subscribers:
     - person1@example.com
     - person2@example.com
-    - manager@yourorg.com
 ```
-Add or remove email addresses here. Every address in this list gets the digest after each PDF batch is processed.
+Every address here receives the digest email after each batch is processed.
 
-#### Publication name and email title
+#### Inbox folders
 ```yaml
-email:
-  title: "Daily News Digest"
-  newspaper_name: "The American Express Times"
+storage:
+  inbox_path: ./inbox               # regular newspaper PDFs
+  editorial_inbox_path: ./editorial_inbox   # editorial/opinion PDFs
 ```
-Change both of these to match the actual publication name.
-
-#### Subscribe / Unsubscribe links in the email footer
-```yaml
-email:
-  subscribe_url: "#"
-  unsubscribe_url: "#"
-```
-Replace `"#"` with real URLs once your website is live.
-
-#### Website URL for "Read Full Article" links
-```yaml
-website:
-  base_url: "http://localhost:3001"
-```
-This controls where the "Read Full Article" button in each email digest points. Change to your production domain when you deploy. You can also set `WEBSITE_BASE_URL` in `.env` to override this without editing the yaml.
+Drop regular newspaper PDFs into `inbox/` and editorial PDFs into `editorial_inbox/`. The watcher monitors both folders simultaneously.
 
 #### Old newspaper age limit
 ```yaml
 processing:
   max_newspaper_age_days: 3
 ```
-If a PDF's publication date (detected from the filename or PDF metadata) is older than this many days, it will still be processed and archived with the correct date — but its articles will be excluded from the email digest. Set to `0` to disable this check and always include all articles in the email.
+If a PDF's publication date is older than this many days, its articles are still archived — but excluded from the email digest. Set to `0` to always include all articles.
 
-#### Everything else (safe to leave as-is for local use)
+#### Other settings (safe to leave as-is for local use)
 
 | Setting | Default | What it does |
 |---|---|---|
-| `llm.model` | `gemini-2.5-flash` | AI model used for extraction and rewriting |
-| `llm.provider` | `gemini` | AI provider. Change to `openai` if switching providers |
-| `rewriter.grouping_threshold` | `0.80` | How similar two articles must be to be merged as one story |
-| `deduplication.similarity_threshold` | `0.85` | How similar a new article must be to an already-published one to be skipped |
+| `llm.model` | `gemini-2.5-flash` | AI model for extraction and rewriting |
+| `rewriter.grouping_threshold` | `0.80` | Cosine similarity threshold for merging same-story articles |
+| `deduplication.similarity_threshold` | `0.85` | Similarity threshold for skipping already-published stories |
 | `email.send_immediately` | `true` | Set to `false` to schedule sends instead of sending right after processing |
+| `email.schedule_cron` | `0 8 * * *` | Cron schedule used when `send_immediately` is false |
+| `website.base_url` | `http://localhost:3001` | Overridden by `WEBSITE_BASE_URL` in `.env` |
 
 ---
 
@@ -212,75 +198,96 @@ If a PDF's publication date (detected from the filename or PDF metadata) is olde
 
 ```
 hsa/
-├── start.sh              ← Mac/Linux: run this to start everything
-├── start.bat             ← Windows: run this to start everything
-├── inbox/                ← DROP YOUR PDFs HERE
-├── processed/            ← Processed PDFs moved here automatically
+├── start.sh                  ← Mac/Linux: run this to start everything
+├── start.bat                 ← Windows: run this to start everything
+├── inbox/                    ← DROP NEWSPAPER PDFs HERE
+├── editorial_inbox/          ← DROP EDITORIAL PDFs HERE
+├── processed/                ← Processed PDFs moved here automatically
 ├── logs/
-│   └── app.log           ← Full processing log
+│   └── app.log               ← Full processing log
 ├── data/
-│   ├── articles.db       ← SQLite database (created automatically)
-│   └── weekly_editions/  ← Generated PDF newspapers saved here
+│   ├── articles.db           ← SQLite database (created automatically)
+│   └── weekly_editions/      ← Generated PDF newspapers saved here
 ├── config/
-│   └── config.yaml       ← Main settings (subscribers, names, thresholds)
+│   └── config.yaml           ← Main settings (subscribers, thresholds, inboxes)
 ├── web/
 │   └── public/
 │       └── images/
-│           └── articles/ ← Extracted page thumbnails (served by Next.js)
-├── src/                  ← Python pipeline source code
-├── web/                  ← Next.js website
-├── templates/            ← Email and newspaper HTML templates
+│           └── articles/     ← Extracted page thumbnails (served by Next.js)
+├── src/                      ← Python pipeline source code
+├── web/                      ← Next.js website
+├── templates/                ← Email HTML template (Jinja2)
 ├── scripts/
-│   └── supabase_schema.sql ← Run this in Supabase SQL editor for production setup
-├── .env                  ← Your credentials (never commit this file)
-├── .env.example          ← Credential template (safe to share)
-└── requirements.txt      ← Python dependencies
+│   └── supabase_schema.sql   ← Run in Supabase SQL editor for production setup
+├── .env                      ← Your credentials (never commit this file)
+├── .env.example              ← Credential template (safe to share)
+└── requirements.txt          ← Python dependencies
 ```
 
 ---
 
 ## Processing a Newspaper
 
-Once the app is running, **drop one or more PDF files into the `inbox/` folder**. You can also upload them via the admin panel at `http://localhost:3001/admin`.
+Once the app is running, **drop PDF files into the `inbox/` folder** or upload via the admin panel at `http://localhost:3001/admin`.
 
 The pipeline will:
-1. Detect the file(s) within a few seconds
-2. Detect the newspaper's publication date from the filename or PDF metadata
-3. Extract all articles from every page (text or OCR vision, in parallel)
-4. Extract a thumbnail image from each article's source page
+1. Detect the file(s) within a few seconds (5-second settle timer to batch simultaneous drops)
+2. Detect the newspaper's publication date using the 4-step chain (see below)
+3. Extract all articles from every page in parallel (text or Gemini Vision OCR)
+4. Extract a thumbnail from each article's source page
 5. Group same-story articles across newspapers and rewrite each into one unified article
-6. Assign an importance score to each story (see scoring section below)
-7. Skip any stories already published in a previous run
-8. Send the email digest to all subscribers (excluding articles from old newspapers)
-9. Move the processed PDFs to `processed/`
+6. Skip any stories already published in a previous run (semantic deduplication)
+7. Send the email digest to all subscribers
+8. Move the processed PDFs to `processed/`
 
-You can watch progress live in the terminal or open `logs/app.log` at any time.
+For **editorial PDFs** (dropped into `editorial_inbox/`):
+- Each article is kept as its own story — no cross-paper grouping
+- Category is forced to "Editorial" regardless of content
+- Articles appear only on the `/editorial` page (not homepage)
+- Editorial articles are included in the email digest
+
+Watch progress in the terminal or open `logs/app.log` at any time.
+
+---
+
+## Newspaper Date Detection
+
+The system uses a 4-step chain to find the publication date of each PDF:
+
+| Step | Method | Example |
+|---|---|---|
+| 1 | **Filename** | `The Times - 25 March 2026.pdf` |
+| 2 | **PDF metadata** | `creationDate` / `modDate` embedded in the PDF |
+| 3 | **First page text** | Masthead date extracted from page 1 text |
+| 4 | **Gemini Vision scan** | Page 1 rendered as image, Gemini reads the printed date |
+
+If all four fail, `published_at` defaults to today's date. This ensures scanned PDFs with non-standard filenames (e.g. `The Daily Telegraph_2503.pdf`) are still dated correctly.
 
 ---
 
 ## Article Importance Scoring
 
-Each article on the website is assigned an importance score from 1 to 10. This determines which stories appear as **Breaking News**, **Hero**, **Featured**, and **Latest**.
+Each article is assigned an importance score from 1 to 10, determining its position on the homepage.
 
-### How the score is calculated
-
-**Step 1 — LLM score (1–10):** When extracting articles, the AI rates each article's news importance using this scale:
+**Step 1 — LLM score (1–10):**
 
 | Score | Meaning | Examples |
 |---|---|---|
 | 1–2 | Trivial | Community events, routine announcements |
-| 3–4 | Moderate | Local government decisions, sports results, business news |
+| 3–4 | Moderate | Local government decisions, sports results |
 | 5–6 | Notable | Significant policy changes, major local events |
-| 7–8 | Major | Significant national events, major crimes, natural disasters |
-| 9–10 | Critical | Major conflicts, election results, mass casualty events, landmark legislation, deaths of prominent public figures |
+| 7–8 | Major | National events, major crimes, natural disasters |
+| 9–10 | Critical | Conflicts, election results, landmark legislation |
 
-**Step 2 — Cross-paper consensus boost:** If the same story is covered by multiple newspapers, the score receives a +0.5 bonus per additional source, capped at 10. A story rated 7 that appeared in three papers scores `min(10, 7 + 2×0.5) = 8.0`.
+**Step 2 — Cross-paper consensus boost:** +0.5 per additional paper covering the same story, capped at 10.
 
-**Step 3 — Homepage layout:**
-- Score ≥ 9 → **Breaking News** banner (top of homepage)
-- Highest remaining score → **Hero story** (large feature)
+**Step 3 — Homepage placement:**
+- Score ≥ 9 → **Breaking News** banner
+- Highest remaining → **Hero story**
 - Next 4 → **Featured grid**
-- Remaining → **Latest** sidebar list
+- Remaining → **Latest** list
+
+Editorial articles are excluded from the homepage scoring and appear only on `/editorial`.
 
 ---
 
@@ -288,52 +295,32 @@ Each article on the website is assigned an importance score from 1 to 10. This d
 
 | URL | What you see |
 |---|---|
-| `http://localhost:3001` | Homepage — breaking news banner, hero story, article grid, latest sidebar |
-| `http://localhost:3001/section/politics` | All articles in a category |
-| `http://localhost:3001/article/some-slug` | Full 300–500 word rewritten article with thumbnail |
-| `http://localhost:3001/archive` | Archive index — all editions grouped by month |
-| `http://localhost:3001/archive/2026-03-23` | A specific past edition, mirroring the homepage layout |
-| `http://localhost:3001/newsletter` | Archive of all sent email digests |
-| `http://localhost:3001/admin` | Admin panel (password protected) |
+| `/` | Homepage — today's articles only: breaking banner, hero, featured grid, latest sidebar |
+| `/editorial` | Today's editorial articles (link only visible when editorials exist) |
+| `/section/politics` | All articles in a category (Editorial excluded from category nav) |
+| `/article/some-slug` | Full 300–500 word rewritten article |
+| `/archive` | All editions grouped by month |
+| `/archive/2026-03-23` | A specific past edition in full homepage layout |
+| `/newsletter` | Archive of all sent email digests |
+| `/admin` | Admin panel (password protected) |
 
-**Admin panel features:**
-- Upload PDFs from the browser (triggers the pipeline automatically)
-- View all processed PDFs with status and article counts
-- Manage the weekly PDF newspaper generation schedule
-- Trigger a one-off weekly edition immediately with a date picker
+### Admin Panel
 
-### Article archive
-
-Every article is stored with its newspaper's actual publication date (not the date you uploaded the PDF). The `/archive` page groups all editions by month — clicking any edition shows a full homepage-style layout for that date, with its own breaking news, hero, featured, and latest sections.
-
----
-
-## Weekly Digital PDF Newspaper
-
-The system can generate a print-ready PDF newspaper from the week's articles.
-
-**Three ways to trigger it:**
-
-1. **One-off from the CLI:**
-   ```bash
-   python src/main.py --generate-weekly 2026-03-21
-   ```
-
-2. **One-off from the admin panel:** Go to `http://localhost:3001/admin` → *Weekly Edition* → pick a date → click **Generate Edition**. The Python worker picks it up within 60 seconds.
-
-3. **Automatically on a schedule:** In the admin panel → *Weekly Edition Schedule* → **+ Add Schedule** → pick a cron preset (e.g. "Every Friday at 8am"). The Python worker checks the schedule every 60 seconds and generates automatically.
-
-Generated PDFs are saved to `data/weekly_editions/` and can be downloaded from the admin panel.
+- **Upload PDFs** — drag-and-drop upload for regular newspaper PDFs (triggers pipeline automatically)
+- **Upload Editorial PDFs** — separate upload section for editorial/opinion content
+- **Processed PDFs** — paginated list (5 per page) of all PDFs with status, article count, and timestamps
+- **Weekly Edition** — trigger a one-off PDF newspaper generation or manage the recurring schedule
+- **Security** — login is rate-limited to 5 attempts per 15 minutes per IP; further attempts return a 15-minute lockout
 
 ---
 
 ## Command-Line Options
 
 ```bash
-# Start watching for new PDFs (default — also starts the weekly scheduler)
+# Start watching both inbox/ and editorial_inbox/ for new PDFs (default)
 python src/main.py
 
-# Process all PDFs currently in inbox/, then start watching
+# Process all PDFs currently in both inboxes, then start watching
 python src/main.py --process-existing
 
 # Process existing PDFs and exit (no watching, no scheduler)
@@ -347,17 +334,15 @@ python src/main.py --generate-weekly 2026-03-21
 ```
 
 ### When to use `--resend-last`
-If processing succeeded but the email step failed (wrong password, network issue), fix the problem and run:
+If processing succeeded but the email failed (wrong password, network issue), fix the problem and run:
 ```bash
 python src/main.py --resend-last
 ```
-This loads the last saved digest from the database and sends it directly — no PDF reprocessing needed.
+This loads the last saved digest from the database and resends — no PDF reprocessing needed.
 
 ---
 
 ## Manual Setup (Without the Start Script)
-
-If you prefer to set things up yourself:
 
 ```bash
 # 1. Clone and enter the project
@@ -374,10 +359,10 @@ pip install -r requirements.txt
 
 # 4. Copy and fill in credentials
 cp .env.example .env
-# Open .env and fill in LLM_API_KEY, EMAIL_SENDER, EMAIL_PASSWORD
+# Open .env and fill in LLM_API_KEY, EMAIL_SENDER, EMAIL_PASSWORD, ADMIN_PASSWORD
 
 # 5. Create required folders
-mkdir -p inbox processed logs data data/weekly_editions web/public/images/articles
+mkdir -p inbox editorial_inbox processed logs data data/weekly_editions web/public/images/articles
 
 # 6. Start the Python worker
 python src/main.py --process-existing
@@ -395,39 +380,45 @@ npm run dev
 
 ## Common Issues & Solutions
 
-### Script says "Permission denied" (Mac/Linux)
+### "Permission denied" on start.sh (Mac/Linux)
 ```bash
 chmod +x start.sh
 ./start.sh
 ```
 
 ### "No module named 'google'" or similar import errors
-Your virtual environment is not active. Run:
+Your virtual environment is not active:
 - Mac/Linux: `source venv/bin/activate`
 - Windows: `venv\Scripts\activate`
 
 ### "404 model not found" error
-The AI model name in `config/config.yaml` may be outdated. Try changing `llm.model` to `gemini-2.5-flash-001` or check [Google AI Studio](https://aistudio.google.com/) for currently available model names.
+The model name in `config/config.yaml` may be outdated. Try `gemini-2.5-flash-001` or check [Google AI Studio](https://aistudio.google.com/) for current model names.
 
-### "429 Too Many Requests" error
-You have hit the Gemini API rate limit. Wait a few minutes and try again, or upgrade your Google AI plan.
+### "429 Too Many Requests" from Gemini
+You have hit the API rate limit. The pipeline retries automatically (up to 5 times with backoff up to 2 minutes). If it keeps failing, wait a few minutes and try again, or upgrade your Google AI plan.
 
 ### Email not sending
-- Make sure `EMAIL_PASSWORD` is a **Gmail App Password** (16-character code), not your regular Gmail password
+- Confirm `EMAIL_PASSWORD` is a **Gmail App Password** (16-character code), not your regular Gmail password
 - Confirm 2-Step Verification is enabled on your Google account
-- Check `logs/app.log` for the exact error message
+- Check `logs/app.log` for the exact SMTP error
 
-### PDF was moved to `processed/` but no email was received
-Check `logs/app.log`. Most common causes: email credential issue, or no articles found in the PDF. Also check if `max_newspaper_age_days` is excluding the PDF as too old — look for "is X days old" in the log.
+### PDF moved to `processed/` but no email received
+Check `logs/app.log`. Common causes:
+- Email credential issue
+- No articles found in the PDF (ads-only pages, wrong language, etc.)
+- `max_newspaper_age_days` is excluding the PDF — look for "is X days old" in the log
+
+### Admin panel login blocked after a few attempts
+The login is rate-limited to 5 failed attempts per 15 minutes per IP address. Wait 15 minutes, then try again.
 
 ### Admin panel shows PDF stuck as "Processing"
-This can happen if the Python worker crashes mid-run. You can manually fix it by updating the record in the database, or simply re-upload the PDF — the pipeline will process it again.
+This happens if the Python worker crashes mid-run. Re-upload the PDF — the pipeline will process it again.
+
+### "Times" label appears but Editorial nav link is missing
+The "Editorial" link in the navigation only appears when there are editorial articles published today. Upload an editorial PDF via the admin panel to see it.
 
 ### WeasyPrint error when generating the weekly PDF
-Install the required system libraries (see Prerequisites section above). On Mac: `brew install pango cairo`.
-
-### Admin panel login fails
-Check that `ADMIN_PASSWORD` in `web/.env.local` matches what you are typing. The default is `changeme`.
+Install the required system libraries (see Prerequisites). On Mac: `brew install pango cairo`.
 
 ---
 
@@ -443,73 +434,71 @@ docker-compose up --build
 docker-compose down
 ```
 
-Make sure `.env` is filled in before running. Drop PDFs into `inbox/` as normal — Docker mounts it automatically.
+Make sure `.env` is filled in before running. Drop PDFs into `inbox/` or `editorial_inbox/` as normal — Docker mounts both automatically.
 
 ---
 
-## Architecture Overview
+## Architecture
 
 ```
-inbox/ (watched folder)
-  └─ PDFs dropped here (or uploaded via admin panel)
+inbox/                    ← regular newspapers
+editorial_inbox/          ← editorials (each article kept separate, forced "Editorial" category)
+  └─ PDFs detected by watcher (both folders monitored simultaneously)
        │
        ▼
-src/watcher.py              watchdog detects new .pdf → 5s settle timer → batches all inbox PDFs
-src/pipeline.py             orchestrates the full flow for all PDFs together
-  ├─ src/date_detector.py        detects publication date from filename / PDF metadata
-  ├─ src/pdf_processor.py        pymupdf: text vs image detection, page rendering, thumbnail extraction
-  ├─ src/article_extractor.py    sends content to LLM → raw Article objects with importance_score
-  ├─ src/rewriter.py             groups same-story articles (cosine sim) → rewrites each
-  │    └─ src/providers/llm/     LLM: rewrite_articles() → 300-500 word article
-  ├─ src/deduplicator.py         checks DB — skip if story already published
-  ├─ src/summarizer.py           LLM: summarize() → 4-5 sentence email summary
-  ├─ src/providers/db/           saves articles + PDF records to SQLite or Supabase
-  ├─ src/digest_store.py         records digest for --resend-last
-  └─ src/email_sender.py         Gmail SMTP → templates/email_digest.html
+src/watcher.py              watchdog observer on both inboxes → 5s settle timer → triggers pipeline
+src/pipeline.py             orchestrates the full flow
+  ├─ src/date_detector.py        4-step date chain: filename → metadata → text → Gemini Vision
+  ├─ src/pdf_processor.py        pymupdf: text vs image pages, thumbnail extraction, first-page render
+  ├─ src/article_extractor.py    LLM → List[Article] with title, content, category, importance_score
+  ├─ src/rewriter.py             cosine-similarity grouping → rewrite_articles() → 300-500 word article
+  │                              (editorial articles skip grouping — processed individually)
+  ├─ src/deduplicator.py         embedding cosine similarity against DB → skip if already published
+  ├─ src/summarizer.py           LLM → 4-5 sentence email summary per article
+  ├─ src/providers/db/           SQLite (local) or Supabase (production)
+  ├─ src/digest_store.py         saves digest batch for --resend-last
+  └─ src/email_sender.py         Gmail SMTP → templates/email_digest.html (Jinja2)
        │
        ▼
-processed/ (PDFs moved here)
-web/public/images/articles/ (page thumbnails saved here)
+processed/                  ← PDFs moved here after processing
+web/public/images/articles/ ← page thumbnails served by Next.js
 
-src/weekly_scheduler.py     background thread — checks cron schedules every 60s
-src/newspaper_generator.py  → Jinja2 + WeasyPrint → data/weekly_editions/edition_YYYYMMDD.pdf
+src/weekly_scheduler.py     background thread: checks cron schedules every 60s
+src/newspaper_generator.py  Jinja2 + WeasyPrint → data/weekly_editions/edition_YYYYMMDD.pdf
 ```
 
-### PDF processing performance
+### LLM API performance settings
 
-Large image-based PDFs (scanned newspapers) are processed with parallel Gemini Vision API calls:
-- **Text PDFs**: 4 pages per API call, up to 5 calls in parallel
-- **Image PDFs**: 2 pages per API call (larger payloads), up to 5 calls in parallel
+| Setting | Value | Notes |
+|---|---|---|
+| `MAX_CONCURRENT` | 3 | Parallel Gemini API calls — kept low to avoid 503 overload on large PDFs |
+| `MAX_RETRIES` | 5 | Per-chunk retry attempts |
+| Retry backoff | 5, 15, 30, 60, 120s | Exponential with fixed schedule |
 
-A 60-page image PDF uses ~30 API calls, all running concurrently in a thread pool. Failed chunks are retried up to 3 times with exponential backoff.
-
-### Deployment architecture
+### Deployment
 
 | Part | Local dev | Production |
 |---|---|---|
-| Web frontend + API | Next.js `npm run dev` (port 3001) | Vercel |
-| PDF processor | Python worker | Railway or Render |
+| Web frontend + API | `npm run dev` (port 3001) | Vercel |
+| PDF pipeline worker | Python process | Railway or Render |
 | Database | SQLite (`data/articles.db`) | Supabase PostgreSQL |
 | File storage | Local `inbox/` / `processed/` | Supabase Storage |
 
-Switching from local to production requires setting four env variables in `.env`:
-`SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_STORAGE_BUCKET`, `WEBSITE_BASE_URL`.
-
-For Supabase, run `scripts/supabase_schema.sql` in the Supabase SQL editor to set up the tables, indexes, and stored procedures.
+To switch to production: set `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_STORAGE_BUCKET`, and `WEBSITE_BASE_URL` in `.env`. Run `scripts/supabase_schema.sql` in the Supabase SQL editor to create all tables, indexes, and stored procedures.
 
 ---
 
 ## Switching AI Providers
 
-To switch from Gemini to another provider (e.g. OpenAI):
+To switch from Gemini to OpenAI:
 
-1. Open `config/config.yaml` and change `llm.provider` to `openai`
+1. Change `llm.provider` to `openai` in `config/config.yaml`
 2. Update `LLM_API_KEY` in `.env` with your OpenAI key
 
-No code changes are needed.
+No code changes are needed — the provider abstraction handles the rest.
 
 ---
 
 ## Support
 
-Check `logs/app.log` first — it contains a detailed record of every step and any errors.
+Check `logs/app.log` first — it contains a timestamped record of every pipeline step, API call, and error.
