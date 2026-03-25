@@ -15,16 +15,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A PDF file is required' }, { status: 400 })
   }
 
+  const buffer = Buffer.from(await file.arrayBuffer())
+
   try {
-    const editorialInboxPath = process.env.EDITORIAL_INBOX_PATH
-      ? path.resolve(process.env.EDITORIAL_INBOX_PATH)
-      : path.join(process.cwd(), '..', 'editorial_inbox')
-
-    await mkdir(editorialInboxPath, { recursive: true })
-
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const dest = path.join(editorialInboxPath, file.name)
-    await writeFile(dest, buffer)
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+      // Production: upload to Supabase Storage bucket (editorial_inbox folder)
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_KEY
+      )
+      const { error } = await supabase.storage
+        .from('pdfs')
+        .upload(`editorial_inbox/${file.name}`, buffer, {
+          contentType: 'application/pdf',
+          upsert: true,
+        })
+      if (error) throw new Error(error.message)
+    } else {
+      // Local dev: write to editorial_inbox/ folder on disk
+      const editorialInboxPath = process.env.EDITORIAL_INBOX_PATH
+        ? path.resolve(process.env.EDITORIAL_INBOX_PATH)
+        : path.join(process.cwd(), '..', 'editorial_inbox')
+      await mkdir(editorialInboxPath, { recursive: true })
+      await writeFile(path.join(editorialInboxPath, file.name), buffer)
+    }
 
     return NextResponse.json({
       ok: true,

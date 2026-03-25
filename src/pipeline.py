@@ -81,13 +81,17 @@ class Pipeline:
         editorial_pdf_set: Set[str] = set()
         editorial_inbox = self.config.storage.editorial_inbox_path
         if editorial_inbox:
-            abs_editorial = os.path.abspath(editorial_inbox)
-            os.makedirs(abs_editorial, exist_ok=True)
-            editorial_files = sorted([
-                os.path.join(abs_editorial, f)
-                for f in os.listdir(abs_editorial)
-                if f.lower().endswith(".pdf")
-            ])
+            # Cloud storage providers (e.g. Supabase) expose list_editorial_files()
+            if hasattr(self.storage, "list_editorial_files"):
+                editorial_files = self.storage.list_editorial_files()
+            else:
+                abs_editorial = os.path.abspath(editorial_inbox)
+                os.makedirs(abs_editorial, exist_ok=True)
+                editorial_files = sorted([
+                    os.path.join(abs_editorial, f)
+                    for f in os.listdir(abs_editorial)
+                    if f.lower().endswith(".pdf")
+                ])
             editorial_pdf_set = set(editorial_files)
             pdf_paths = list(pdf_paths) + editorial_files
 

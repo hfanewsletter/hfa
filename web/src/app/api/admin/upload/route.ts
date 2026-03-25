@@ -16,30 +16,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A PDF file is required' }, { status: 400 })
   }
 
+  const buffer = Buffer.from(await file.arrayBuffer())
+
   try {
-    // Resolve inbox path — defaults to ../inbox relative to web/
-    const inboxPath = process.env.INBOX_PATH
-      ? path.resolve(process.env.INBOX_PATH)
-      : path.join(process.cwd(), '..', 'inbox')
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+      // Production: upload to Supabase Storage bucket
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_KEY
+      )
+      const { error } = await supabase.storage
+        .from('pdfs')
+        .upload(`inbox/${file.name}`, buffer, {
+          contentType: 'application/pdf',
+          upsert: true,
+        })
+      if (error) throw new Error(error.message)
+    } else {
+      // Local dev: write to inbox/ folder on disk
+      const inboxPath = process.env.INBOX_PATH
+        ? path.resolve(process.env.INBOX_PATH)
+        : path.join(process.cwd(), '..', 'inbox')
+      await mkdir(inboxPath, { recursive: true })
+      await writeFile(path.join(inboxPath, file.name), buffer)
+    }
 
-    await mkdir(inboxPath, { recursive: true })
-
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const dest = path.join(inboxPath, file.name)
-    await writeFile(dest, buffer)
-
-    // Create a pending DB record immediately so the admin sees it right away
     try {
       await getDB().createPendingPDF(file.name)
     } catch {
-      // Non-fatal — pipeline will create its own record when it starts
+      // Non-fatal — pipeline creates its own record when it starts
     }
 
-    return NextResponse.json({
-      ok: true,
-      filename: file.name,
-      message: 'Queued for processing',
-    })
+    return NextResponse.json({ ok: true, filename: file.name, message: 'Queued for processing' })
   } catch (err) {
     console.error('Upload error:', err)
     return NextResponse.json({ error: 'Failed to save file' }, { status: 500 })
