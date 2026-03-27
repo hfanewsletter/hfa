@@ -96,7 +96,7 @@ export class SupabaseAdapter implements DBAdapter {
       .from('articles')
       .select('category')
       .neq('category', 'Editorial')
-    const cats = [...new Set((data ?? []).map((r: { category: string }) => r.category))]
+    const cats = Array.from(new Set((data ?? []).map((r: { category: string }) => r.category)))
     return cats.sort()
   }
 
@@ -115,7 +115,7 @@ export class SupabaseAdapter implements DBAdapter {
     ])
 
     const articles = (articlesRes.data ?? []).map(rowToArticle)
-    const categories = [...new Set((catsRes.data ?? []).map((r: { category: string }) => r.category))].sort() as string[]
+    const categories = Array.from(new Set((catsRes.data ?? []).map((r: { category: string }) => r.category))).sort() as string[]
 
     // Breaking banner: first article with score >= 9; hero: highest remaining; featured: next 4
     const breaking = articles.find(a => a.importance_score >= 9) ?? null

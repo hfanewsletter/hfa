@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
-import { getDB } from '@/lib/db'
+import { getDB, type Edition } from '@/lib/db'
 import ArchiveFilter from '@/components/archive/ArchiveFilter'
 
 export const metadata: Metadata = { title: 'Edition Archive — The American Express Times' }
 export const revalidate = 300
 
 export default async function ArchivePage() {
-  let editions: Awaited<ReturnType<typeof getDB>['getEditionDates']> = []
+  let editions: Edition[] = []
   try {
     editions = await getDB().getEditionDates(365)
   } catch { /* empty DB */ }
