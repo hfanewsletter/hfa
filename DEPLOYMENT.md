@@ -4,9 +4,9 @@ This guide walks you through deploying the app to production using four services
 
 | Service | What it does | Cost |
 |---|---|---|
-| **GitHub** | Hosts your code — Vercel and Railway pull from here | Free |
+| **GitHub** | Hosts your code — Netlify and Railway pull from here | Free |
 | **Supabase** | PostgreSQL database + PDF file storage | Free tier available |
-| **Vercel** | Hosts the Next.js website | Free tier available |
+| **Netlify** | Hosts the Next.js website | Free tier available |
 | **Railway** | Runs the Python pipeline worker | ~$5/month |
 
 ---
@@ -17,7 +17,7 @@ This guide walks you through deploying the app to production using four services
 Admin uploads PDF
        │
        ▼
-Vercel (Next.js website)
+Netlify (Next.js website)
   → saves PDF to Supabase Storage (inbox/ folder)
        │
        ▼
@@ -27,7 +27,7 @@ Railway (Python worker) — polls Supabase Storage every few seconds
   → moves PDF to processed/ in Supabase Storage
        │
        ▼
-Vercel (Next.js website) — reads articles from Supabase DB
+Netlify (Next.js website) — reads articles from Supabase DB
   → displays on website
 ```
 
@@ -44,7 +44,7 @@ You will need:
 
 ## Step 1 — Push Your Code to GitHub
 
-GitHub is where your code lives. Vercel and Railway will automatically pull from it whenever you push changes.
+GitHub is where your code lives. Netlify and Railway will automatically pull from it whenever you push changes.
 
 1. Go to [github.com](https://github.com) and create a free account if you don't have one
 2. Click the **+** icon in the top right → **New repository**
@@ -79,7 +79,7 @@ Supabase stores all articles in a PostgreSQL database, and stores uploaded PDFs 
 3. Click **New project**
 4. Fill in:
    - **Name**: `hsa` (or anything)
-   - **Database Password**: "hfanewsletterHindus@108$" Generate a strong password and save it somewhere safe
+   - **Database Password**: Generate a strong password and save it somewhere safe
    - **Region**: Pick the one closest to you geographically
 5. Click **Create new project** and wait 1–2 minutes for it to spin up
 
@@ -111,43 +111,44 @@ You need three values from Supabase. Keep a notepad open and write them down.
 **SUPABASE_URL:**
 1. Click **Settings** (gear icon) in the left sidebar → **API**
 2. Copy the **Project URL** — looks like `https://abcdefgh.supabase.co`
-https://xjjywpcqsfaoesnxomvp.supabase.co
 
 **SUPABASE_KEY (anon key):**
 1. Same page (**Settings → API**)
 2. Under **Project API keys**, copy the `anon` `public` key
-anon = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhqanl3cGNxc2Zhb2VzbnhvbXZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MjQ4MTQsImV4cCI6MjA5MDIwMDgxNH0.wI36EzMCwQBcXy9UqlXvrWsInnmTTMIbLNUCyljQBSw
 
 **SUPABASE_SERVICE_KEY (service role key):**
 1. Same page (**Settings → API**)
 2. Under **Project API keys**, copy the `service_role` key
 3. ⚠️ This key has full database access — never put it in client-side code or commit it to Git
-service_role = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhqanl3cGNxc2Zhb2VzbnhvbXZwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDYyNDgxNCwiZXhwIjoyMDkwMjAwODE0fQ.8R50KgBjAq7snj38z0EH1gqB70wRbQjihEn9uf6aUuw
 
 ---
 
-## Step 3 — Deploy the Website to Vercel
+## Step 3 — Deploy the Website to Netlify
 
-Vercel hosts the Next.js website. It automatically redeploys whenever you push code to GitHub.
+Netlify hosts the Next.js website. It automatically redeploys whenever you push code to GitHub.
 
 ### 3.1 Create account
 
-1. Go to [vercel.com](https://vercel.com) and click **Sign Up**
+1. Go to [netlify.com](https://netlify.com) and click **Sign Up**
 2. Sign up with GitHub (strongly recommended — it links your repos automatically)
+3. When asked about plan type, select **"I'm working on personal projects" → Hobby (Free)**
 
 ### 3.2 Import your project
 
-1. After signing in, click **Add New…** → **Project**
-2. Find your `hsa` repository in the list and click **Import**
-3. Vercel will try to auto-detect the framework. You need to override this:
-   - Under **Root Directory**, click **Edit** and type `web`
-   - This tells Vercel that the Next.js app is inside the `web/` folder, not the project root
-4. Leave everything else as default for now
-5. **Do NOT click Deploy yet** — you need to add environment variables first
+1. After signing in, click **Add new site** → **Import an existing project**
+2. Click **GitHub**
+3. Authorize Netlify to access your GitHub account if prompted
+4. Find your `hsa` repository in the list and click it
+5. On the configuration screen:
+   - **Branch to deploy**: `main`
+   - **Base directory**: `web`
+   - **Build command**: `npm run build`
+   - **Publish directory**: `web/.next`
+6. **Do NOT click Deploy yet** — you need to add environment variables first
 
 ### 3.3 Add environment variables
 
-Still on the same import screen, scroll down to **Environment Variables** and add each of these one by one:
+Still on the same screen, click **Add environment variables** and add each of these:
 
 | Name | Value |
 |---|---|
@@ -160,26 +161,30 @@ Still on the same import screen, scroll down to **Environment Variables** and ad
 | `AUTH_SECRET` | Another strong random string (run `openssl rand -base64 32`) |
 | `WEBSITE_BASE_URL` | Leave blank for now — you'll fill this in after deployment |
 
-> To add each variable: type the name in the **Name** field, paste the value, click **Add**.
+> To add each variable: type the name, paste the value, click **Add variable**.
 
 ### 3.4 Deploy
 
-1. Click **Deploy**
-2. Wait 2–3 minutes — Vercel is installing packages and building the app
-3. When it says **Congratulations!** and shows a URL like `hsa.vercel.app`, your website is live
+1. Click **Deploy site**
+2. Wait 2–3 minutes — Netlify is installing packages and building the app
+3. When it shows a green **Published** status and a URL like `random-name.netlify.app`, your website is live
 
-### 3.5 Add the website URL back to Vercel
+### 3.5 Set a custom site name (optional but recommended)
+
+1. Go to **Site configuration** → **General** → **Site details**
+2. Click **Change site name**
+3. Enter something like `hsa-newsletter` → Save
+4. Your site will now be at `hsa-newsletter.netlify.app`
+
+### 3.6 Add the website URL back to Netlify
 
 Now that you have the URL, add it as an environment variable:
 
-1. In your Vercel project, click **Settings** → **Environment Variables**
-2. Add a new variable:
-   - Name: `WEBSITE_BASE_URL`
-   - Value: your Vercel URL e.g. `https://hsa.vercel.app`
-3. Click **Save**
-4. Go to **Deployments** tab → click the three dots on the latest deployment → **Redeploy**
+1. Go to **Site configuration** → **Environment variables**
+2. Find `WEBSITE_BASE_URL` and update it to your Netlify URL e.g. `https://hsa-newsletter.netlify.app`
+3. Go to **Deploys** → click **Trigger deploy** → **Deploy site**
 
-> **Check:** Visit your Vercel URL in a browser. You should see the newspaper website. Visit `your-url.vercel.app/admin` — you should see a login page.
+> **Check:** Visit your Netlify URL in a browser. You should see the newspaper website. Visit `your-url.netlify.app/admin` — you should see a login page.
 
 ---
 
@@ -208,7 +213,6 @@ Railway runs the Python pipeline 24/7. When you drop a PDF into Supabase Storage
    python src/main.py
    ```
 4. Find **Root Directory** — leave this blank (the Python code is at the repo root)
-5. Find **Watch Paths** — leave blank
 
 ### 4.4 Add environment variables
 
@@ -222,7 +226,7 @@ SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 LLM_API_KEY=your_gemini_api_key
 EMAIL_SENDER=your_gmail_address@gmail.com
 EMAIL_PASSWORD=your_gmail_app_password
-WEBSITE_BASE_URL=https://your-project.vercel.app
+WEBSITE_BASE_URL=https://your-site.netlify.app
 STORAGE_PROVIDER=supabase
 ```
 
@@ -239,8 +243,6 @@ storage:
   processed_path: ./processed
   editorial_inbox_path: ./editorial_inbox
 ```
-
-The `STORAGE_PROVIDER=supabase` environment variable in Railway overrides the `local` value in the yaml — no need to commit a separate config file for production.
 
 ### 4.6 Redeploy
 
@@ -260,11 +262,11 @@ The `STORAGE_PROVIDER=supabase` environment variable in Railway overrides the `l
 
 ## Step 5 — Test the Full Flow End to End
 
-1. Visit `https://your-project.vercel.app/admin` and log in with your `ADMIN_PASSWORD`
+1. Visit `https://your-site.netlify.app/admin` and log in with your `ADMIN_PASSWORD`
 2. Upload a newspaper PDF using the **Upload PDFs** section
 3. Go to Railway → your service → **Deploy** tab → click the latest deployment → view logs
 4. You should see the pipeline running: extracting articles, summarizing, sending email
-5. Once processing is done, visit `https://your-project.vercel.app` — the articles should appear
+5. Once processing is done, visit `https://your-site.netlify.app` — the articles should appear
 
 ---
 
@@ -278,11 +280,11 @@ email:
     - real_subscriber1@email.com
     - real_subscriber2@email.com
   title: "The American Express Times"
-  subscribe_url: "https://your-project.vercel.app/newsletter"
-  unsubscribe_url: "https://your-project.vercel.app/newsletter"
+  subscribe_url: "https://your-site.netlify.app/newsletter"
+  unsubscribe_url: "https://your-site.netlify.app/newsletter"
 
 website:
-  base_url: "https://your-project.vercel.app"
+  base_url: "https://your-site.netlify.app"
 ```
 
 Then commit and push:
@@ -293,7 +295,7 @@ git commit -m "update production config"
 git push
 ```
 
-Railway and Vercel will automatically redeploy with the new config.
+Netlify and Railway will automatically redeploy with the new config.
 
 ---
 
@@ -301,13 +303,13 @@ Railway and Vercel will automatically redeploy with the new config.
 
 If you have a domain name (e.g. `americanexpresstimes.com`):
 
-### On Vercel:
-1. Go to your Vercel project → **Settings** → **Domains**
-2. Type your domain and click **Add**
-3. Vercel will show you DNS records to add — follow their instructions
+### On Netlify:
+1. Go to your Netlify site → **Domain management** → **Add a domain**
+2. Enter your domain and click **Verify**
+3. Netlify will show you DNS records to add — follow their instructions
 
 ### Update environment variables after adding domain:
-1. In Vercel: update `WEBSITE_BASE_URL` to `https://yourdomain.com`
+1. In Netlify: update `WEBSITE_BASE_URL` to `https://yourdomain.com`
 2. In Railway: update `WEBSITE_BASE_URL` to `https://yourdomain.com`
 3. Redeploy both
 
@@ -315,7 +317,7 @@ If you have a domain name (e.g. `americanexpresstimes.com`):
 
 ## Environment Variable Reference
 
-### Vercel (Next.js website)
+### Netlify (Next.js website)
 
 | Variable | Description |
 |---|---|
@@ -326,7 +328,7 @@ If you have a domain name (e.g. `americanexpresstimes.com`):
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key (for client-side reads) |
 | `ADMIN_PASSWORD` | Admin panel login password (20+ random chars) |
 | `AUTH_SECRET` | Secret for signing session tokens (32+ random chars) |
-| `WEBSITE_BASE_URL` | Your Vercel URL or custom domain |
+| `WEBSITE_BASE_URL` | Your Netlify URL or custom domain |
 
 ### Railway (Python worker)
 
@@ -337,7 +339,7 @@ If you have a domain name (e.g. `americanexpresstimes.com`):
 | `LLM_API_KEY` | Gemini API key |
 | `EMAIL_SENDER` | Gmail address |
 | `EMAIL_PASSWORD` | Gmail App Password (16-char code) |
-| `WEBSITE_BASE_URL` | Your Vercel URL or custom domain |
+| `WEBSITE_BASE_URL` | Your Netlify URL or custom domain |
 | `STORAGE_PROVIDER` | Set to `supabase` |
 
 ---
@@ -351,7 +353,7 @@ The Python worker on Railway may still be processing. Check Railway logs — the
 You forgot to add that environment variable in Railway. Go to Variables tab, add it, then redeploy.
 
 ### Upload from admin panel returns "Failed to save file"
-Check that `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set in Vercel environment variables. Also confirm the `pdfs` storage bucket exists in Supabase (Step 2.3).
+Check that `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set in Netlify environment variables. Also confirm the `pdfs` storage bucket exists in Supabase (Step 2.3).
 
 ### Email is not being sent
 Check Railway logs for SMTP errors. Confirm `EMAIL_SENDER` and `EMAIL_PASSWORD` are correct. Remember `EMAIL_PASSWORD` must be a Gmail App Password, not your regular Gmail password.
@@ -360,7 +362,7 @@ Check Railway logs for SMTP errors. Confirm `EMAIL_SENDER` and `EMAIL_PASSWORD` 
 Make sure **Start Command** is set to `python src/main.py` in Railway → Settings tab.
 
 ### Supabase storage permission error
-Make sure you are using the **service role key** (not the anon key) for `SUPABASE_SERVICE_KEY`. The service role key bypasses Row Level Security and has full storage access. It starts with `eyJ...` and is longer than the anon key.
+Make sure you are using the **service role key** (not the anon key) for `SUPABASE_SERVICE_KEY`. The service role key bypasses Row Level Security and has full storage access.
 
 ### Admin panel login blocked after a few attempts
 The login is rate-limited to 5 failed attempts per 15 minutes. Wait 15 minutes and try again with the correct password.
@@ -376,14 +378,14 @@ git add .
 git commit -m "describe your change"
 git push
 ```
-Vercel redeploys the website automatically. Railway redeploys the Python worker automatically.
+Netlify redeploys the website automatically. Railway redeploys the Python worker automatically.
 
 ### Viewing logs
-- **Website errors**: Vercel → your project → **Functions** tab
+- **Website errors**: Netlify → your site → **Deploys** → click a deploy → **Deploy log**
 - **Pipeline logs**: Railway → your service → click the active deployment
 
 ### Resending a failed digest email
-SSH into Railway or use Railway's **Run Command** feature to run:
+Use Railway's **Run Command** feature to run:
 ```bash
 python src/main.py --resend-last
 ```
