@@ -25,8 +25,8 @@ email:
   title: "The American Express Times"
   newspaper_name: "The American Express Times"
   # Subscribe/unsubscribe page URLs — update these once the website is live
-  subscribe_url: "#"
-  unsubscribe_url: "#"
+  subscribe_url: "https://hsa-newsletter.netlify.app/newsletter"
+  unsubscribe_url: "https://hsa-newsletter.netlify.app/newsletter"
   # send_immediately: true sends email right after processing
   # Set to false for production and configure a cron schedule
   send_immediately: true
