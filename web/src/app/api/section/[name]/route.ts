@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDB } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ name: string }> }) {
   const { name } = await params
   const { searchParams } = new URL(req.url)
