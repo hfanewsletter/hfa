@@ -172,6 +172,15 @@ export class SupabaseAdapter implements DBAdapter {
     })
   }
 
+  async dismissStuckPDFs(filenames: string[]): Promise<void> {
+    if (filenames.length === 0) return
+    await this.client
+      .from('pdfs')
+      .update({ status: 'failed' })
+      .in('filename', filenames)
+      .in('status', ['pending', 'processing'])
+  }
+
   async getDigests() {
     const { data } = await this.client
       .from('digests')

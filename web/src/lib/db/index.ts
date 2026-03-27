@@ -18,6 +18,7 @@ export interface DBAdapter {
   getArticlesByDate(date: string, limit?: number): Promise<Article[]>
   getPDFs(): Promise<PDFRecord[]>
   createPendingPDF(filename: string): Promise<void>
+  dismissStuckPDFs(filenames: string[]): Promise<void>
   getDigests(): Promise<{ batch_id: string; sent_at: string; article_slugs: string[] }[]>
   getSchedules(): Promise<Schedule[]>
   createSchedule(s: Omit<Schedule, 'id' | 'created_at'>): Promise<Schedule>

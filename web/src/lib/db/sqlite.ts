@@ -204,6 +204,16 @@ export class SQLiteAdapter implements DBAdapter {
     db.close()
   }
 
+  async dismissStuckPDFs(filenames: string[]): Promise<void> {
+    if (filenames.length === 0) return
+    const db = openDB()
+    const placeholders = filenames.map(() => '?').join(',')
+    db.prepare(
+      `UPDATE pdfs SET status = 'failed' WHERE filename IN (${placeholders}) AND status IN ('pending', 'processing')`
+    ).run(...filenames)
+    db.close()
+  }
+
   async getDigests() {
     const db = openDB()
     const rows = db.prepare(

@@ -60,6 +60,7 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [stalled, setStalled] = useState(false)
+  const [dismissing, setDismissing] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function isStale(uploadedAt: string) {
@@ -92,6 +93,19 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
         }
       })
       .catch(() => setLoading(false))
+  }
+
+  async function handleDismiss() {
+    setDismissing(true)
+    const filenames = activePdfs.map(p => p.filename)
+    await fetch('/api/admin/pdfs/dismiss', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filenames }),
+    })
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+    setDismissing(false)
+    fetchPdfs()
   }
 
   // Fetch on mount and whenever the refresh trigger fires
@@ -142,7 +156,14 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
                 ? `${activePdfs.length} PDF${activePdfs.length > 1 ? 's' : ''} taking longer than expected`
                 : `Processing ${activePdfs.length} PDF${activePdfs.length > 1 ? 's' : ''}`}
             </span>
-            {!stalled && <span className="text-xs text-gray-400 ml-auto">Polling every 3s</span>}
+            <button
+              onClick={handleDismiss}
+              disabled={dismissing}
+              className="ml-auto text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+              title="Mark these PDFs as failed and dismiss"
+            >
+              {dismissing ? 'Dismissing…' : 'Dismiss ✕'}
+            </button>
           </div>
 
           <div className="space-y-3">
