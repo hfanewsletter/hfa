@@ -171,8 +171,8 @@ Still on the same screen, click **Add environment variables** and add each of th
 
 ### 3.5 Set a custom site name (optional but recommended)
 
-1. Go to **Site configuration** → **General** → **Site details**
-2. Click **Change site name**
+1. Go to **Project configuration** → **General** → **Project details**
+2. Click **edit the Project name**
 3. Enter something like `hsa-newsletter` → Save
 4. Your site will now be at `hsa-newsletter.netlify.app`
 
@@ -180,7 +180,7 @@ Still on the same screen, click **Add environment variables** and add each of th
 
 Now that you have the URL, add it as an environment variable:
 
-1. Go to **Site configuration** → **Environment variables**
+1. Go to **Project configuration** → **Environment variables**
 2. Find `WEBSITE_BASE_URL` and update it to your Netlify URL e.g. `https://hsa-newsletter.netlify.app`
 3. Go to **Deploys** → click **Trigger deploy** → **Deploy site**
 
