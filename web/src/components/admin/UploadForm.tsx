@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
+import { createClient } from '@supabase/supabase-js'
 
 interface UploadResult {
   filename: string
@@ -56,17 +57,22 @@ export default function UploadForm({
           if (res.status === 401) { window.location.href = '/admin/login'; return }
           const data = await res.json()
           outcomes.push({ filename: file.name, status: res.ok ? 'queued' : 'error', message: data.message ?? data.error })
-        } else if (urlData.signedUrl) {
-          // Production: upload directly to Supabase (no Netlify size limit)
-          const putRes = await fetch(urlData.signedUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/pdf' },
-            body: file,
-          })
+        } else if (urlData.token && urlData.path) {
+          // Production: upload directly to Supabase via signed URL (no Netlify size limit)
+          const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+          )
+          const { error: uploadError } = await supabase.storage
+            .from('pdfs')
+            .uploadToSignedUrl(urlData.path, urlData.token, file, {
+              contentType: 'application/pdf',
+              upsert: true,
+            })
           outcomes.push({
             filename: file.name,
-            status: putRes.ok ? 'queued' : 'error',
-            message: putRes.ok ? 'Queued for processing' : 'Upload to storage failed',
+            status: uploadError ? 'error' : 'queued',
+            message: uploadError ? uploadError.message : 'Queued for processing',
           })
         } else {
           outcomes.push({ filename: file.name, status: 'error', message: urlData.error ?? 'Failed to get upload URL' })

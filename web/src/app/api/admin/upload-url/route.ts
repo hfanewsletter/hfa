@@ -35,5 +35,5 @@ export async function POST(req: NextRequest) {
     await getDB().createPendingPDF(filename)
   } catch { /* pipeline creates its own record */ }
 
-  return NextResponse.json({ signedUrl: data.signedUrl })
+  return NextResponse.json({ signedUrl: data.signedUrl, token: data.token, path: `${folder}/${filename}` })
 }
