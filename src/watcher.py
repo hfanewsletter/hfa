@@ -64,6 +64,43 @@ class PDFHandler(FileSystemEventHandler):
             self._lock.release()
 
 
+CLOUD_POLL_INTERVAL = 30  # seconds between Supabase Storage polls
+
+
+class CloudStoragePoller:
+    """
+    Polls cloud storage (e.g. Supabase) for new PDFs at a fixed interval.
+    Used instead of FolderWatcher when STORAGE_PROVIDER != 'local', because
+    watchdog can only monitor the local filesystem, not cloud buckets.
+    """
+
+    def __init__(self, config: AppConfig):
+        self.pipeline = Pipeline(config)
+        self._lock = threading.Lock()
+
+    def start(self) -> None:
+        """Poll cloud storage in a loop. Blocks until interrupted."""
+        logger.info("Polling cloud storage for new PDFs every %ds", CLOUD_POLL_INTERVAL)
+        logger.info("Press Ctrl+C to stop.")
+        try:
+            while True:
+                self._check_and_run()
+                time.sleep(CLOUD_POLL_INTERVAL)
+        except (KeyboardInterrupt, SystemExit):
+            logger.info("Cloud storage poller stopped.")
+
+    def _check_and_run(self) -> None:
+        if not self._lock.acquire(blocking=False):
+            logger.info("Pipeline already running — skipping poll.")
+            return
+        try:
+            self.pipeline.run()
+        except Exception as e:
+            logger.error("Pipeline error: %s", e, exc_info=True)
+        finally:
+            self._lock.release()
+
+
 class FolderWatcher:
     """Watches the inbox folder for new PDF files."""
 

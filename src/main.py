@@ -18,7 +18,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config_loader import load_config
-from src.watcher import FolderWatcher
+from src.watcher import FolderWatcher, CloudStoragePoller
 from src.pipeline import Pipeline
 from src.digest_store import DigestStore
 from src.email_sender import EmailSender
@@ -115,8 +115,12 @@ def main() -> None:
     if not args.run_once:
         scheduler = WeeklyScheduler()
         scheduler.start()
-        watcher = FolderWatcher(config)
-        watcher.start()
+        if config.storage.provider == 'local':
+            watcher = FolderWatcher(config)
+            watcher.start()
+        else:
+            poller = CloudStoragePoller(config)
+            poller.start()
 
 
 if __name__ == "__main__":
