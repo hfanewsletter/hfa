@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await supabase.storage
     .from('pdfs')
-    .createSignedUploadUrl(`${folder}/${filename}`)
+    .createSignedUploadUrl(`${folder}/${filename}`, { upsert: true })
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
