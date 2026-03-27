@@ -10,11 +10,13 @@ interface UploadResult {
 export default function UploadForm({
   onUploadDone,
   uploadUrl = '/api/admin/upload',
+  folder = 'inbox',
   title = 'Upload PDFs',
   description = 'Drop one or more newspaper PDFs. The pipeline will extract, group, and rewrite all articles automatically.',
 }: {
   onUploadDone?: () => void
   uploadUrl?: string
+  folder?: string
   title?: string
   description?: string
 }) {
@@ -35,21 +37,40 @@ export default function UploadForm({
     const outcomes: UploadResult[] = []
 
     for (const file of Array.from(files)) {
-      const fd = new FormData()
-      fd.append('pdf', file)
-
       try {
-        const res = await fetch(uploadUrl, { method: 'POST', body: fd })
-        if (res.status === 401) {
-          window.location.href = '/admin/login'
-          return
-        }
-        const data = await res.json()
-        outcomes.push({
-          filename: file.name,
-          status: res.ok ? 'queued' : 'error',
-          message: data.message ?? data.error,
+        // Try to get a signed upload URL (production: bypasses Netlify 6MB limit)
+        const urlRes = await fetch('/api/admin/upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, folder }),
         })
+        if (urlRes.status === 401) { window.location.href = '/admin/login'; return }
+
+        const urlData = await urlRes.json()
+
+        if (urlData.local) {
+          // Local dev: upload via API route as before
+          const fd = new FormData()
+          fd.append('pdf', file)
+          const res = await fetch(uploadUrl, { method: 'POST', body: fd })
+          if (res.status === 401) { window.location.href = '/admin/login'; return }
+          const data = await res.json()
+          outcomes.push({ filename: file.name, status: res.ok ? 'queued' : 'error', message: data.message ?? data.error })
+        } else if (urlData.signedUrl) {
+          // Production: upload directly to Supabase (no Netlify size limit)
+          const putRes = await fetch(urlData.signedUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/pdf' },
+            body: file,
+          })
+          outcomes.push({
+            filename: file.name,
+            status: putRes.ok ? 'queued' : 'error',
+            message: putRes.ok ? 'Queued for processing' : 'Upload to storage failed',
+          })
+        } else {
+          outcomes.push({ filename: file.name, status: 'error', message: urlData.error ?? 'Failed to get upload URL' })
+        }
       } catch {
         outcomes.push({ filename: file.name, status: 'error', message: 'Network error' })
       }
