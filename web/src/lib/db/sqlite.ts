@@ -197,10 +197,18 @@ export class SQLiteAdapter implements DBAdapter {
 
   async createPendingPDF(filename: string): Promise<void> {
     const db = openDB()
-    db.prepare(
-      `INSERT INTO pdfs (filename, storage_url, status, article_count, uploaded_at)
-       VALUES (?, '', 'pending', 0, ?)`
-    ).run(filename, new Date().toISOString())
+    const now = new Date().toISOString()
+    // Reset existing record to pending, or insert new one if none exists
+    const result = db.prepare(
+      `UPDATE pdfs SET status = 'pending', uploaded_at = ?, article_count = 0, processed_at = NULL
+       WHERE id = (SELECT id FROM pdfs WHERE filename = ? ORDER BY uploaded_at DESC LIMIT 1)`
+    ).run(now, filename)
+    if ((result as { changes: number }).changes === 0) {
+      db.prepare(
+        `INSERT INTO pdfs (filename, storage_url, status, article_count, uploaded_at)
+         VALUES (?, '', 'pending', 0, ?)`
+      ).run(filename, now)
+    }
     db.close()
   }
 

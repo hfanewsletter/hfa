@@ -163,13 +163,24 @@ export class SupabaseAdapter implements DBAdapter {
   }
 
   async createPendingPDF(filename: string): Promise<void> {
-    await this.client.from('pdfs').insert({
-      filename,
-      storage_url: '',
-      status: 'pending',
-      article_count: 0,
-      uploaded_at: new Date().toISOString(),
-    })
+    const now = new Date().toISOString()
+    // Try to reset an existing record for this filename to pending
+    const { data: updated } = await this.client
+      .from('pdfs')
+      .update({ status: 'pending', uploaded_at: now, article_count: 0, processed_at: null })
+      .eq('filename', filename)
+      .select('id')
+      .limit(1)
+    // If no existing record, insert a fresh one
+    if (!updated || updated.length === 0) {
+      await this.client.from('pdfs').insert({
+        filename,
+        storage_url: '',
+        status: 'pending',
+        article_count: 0,
+        uploaded_at: now,
+      })
+    }
   }
 
   async dismissStuckPDFs(filenames: string[]): Promise<void> {

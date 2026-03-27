@@ -60,7 +60,7 @@ export default function UploadForm({
           // Production: PUT file directly to Supabase signed URL (no Netlify size limit, no client-side keys needed)
           const uploadRes = await fetch(urlData.signedUrl, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/pdf' },
+            headers: { 'Content-Type': 'application/pdf', 'x-upsert': 'true' },
             body: file,
           })
           if (!uploadRes.ok) {
