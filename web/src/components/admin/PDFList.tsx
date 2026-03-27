@@ -24,9 +24,12 @@ function ProcessingBar({ filename }: { filename: string }) {
   const [width, setWidth] = useState(8)
 
   useEffect(() => {
-    // Cycle through stages every ~4 seconds
+    // Advance through stages once — stop at the last one
     const interval = setInterval(() => {
-      setStage(s => (s + 1) % PROCESSING_STAGES.length)
+      setStage(s => {
+        if (s >= PROCESSING_STAGES.length - 1) return s  // stay at last stage
+        return s + 1
+      })
       setWidth(w => Math.min(w + Math.floor(Math.random() * 12 + 6), 90))
     }, 4000)
     return () => clearInterval(interval)
@@ -50,11 +53,18 @@ function ProcessingBar({ filename }: { filename: string }) {
 
 const PAGE_SIZE = 5
 
+const STALE_MINUTES = 20
+
 export default function PDFList({ refreshTrigger }: { refreshTrigger?: number }) {
   const [pdfs, setPdfs] = useState<PDFRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  const [stalled, setStalled] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  function isStale(uploadedAt: string) {
+    return (Date.now() - new Date(uploadedAt).getTime()) > STALE_MINUTES * 60 * 1000
+  }
 
   function fetchPdfs(showLoading = false) {
     if (showLoading) setLoading(true)
@@ -65,9 +75,16 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
         setPdfs(list)
         setLoading(false)
 
-        // If any PDF is still active, keep polling
-        const hasActive = list.some(p => p.status === 'pending' || p.status === 'processing')
-        if (hasActive && !pollRef.current) {
+        const activeList = list.filter(p => p.status === 'pending' || p.status === 'processing')
+        const hasActive = activeList.length > 0
+        // Stop polling if all active PDFs are older than STALE_MINUTES
+        const allStale = hasActive && activeList.every(p => isStale(p.uploaded_at))
+
+        if (allStale) {
+          setStalled(true)
+          if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+        } else if (hasActive && !pollRef.current) {
+          setStalled(false)
           pollRef.current = setInterval(() => fetchPdfs(), 3000)
         } else if (!hasActive && pollRef.current) {
           clearInterval(pollRef.current)
@@ -79,6 +96,7 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
 
   // Fetch on mount and whenever the refresh trigger fires
   useEffect(() => {
+    setStalled(false)
     fetchPdfs(true)
     setPage(1)
     return () => {
@@ -108,18 +126,23 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
 
       {/* Active processing banner */}
       {activePdfs.length > 0 && (
-        <div className="bg-white rounded border border-blue-200 px-5 py-4">
+        <div className={`bg-white rounded border px-5 py-4 ${stalled ? 'border-yellow-300' : 'border-blue-200'}`}>
           <div className="flex items-center gap-2 mb-3">
-            {/* Spinning indicator */}
-            <svg className="animate-spin h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-              <path className="opacity-75" fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-            </svg>
-            <span className="text-sm font-semibold text-blue-700">
-              Processing {activePdfs.length} PDF{activePdfs.length > 1 ? 's' : ''}
+            {stalled ? (
+              <span className="text-yellow-500 font-bold text-base shrink-0">⚠</span>
+            ) : (
+              <svg className="animate-spin h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+            )}
+            <span className={`text-sm font-semibold ${stalled ? 'text-yellow-700' : 'text-blue-700'}`}>
+              {stalled
+                ? `${activePdfs.length} PDF${activePdfs.length > 1 ? 's' : ''} taking longer than expected`
+                : `Processing ${activePdfs.length} PDF${activePdfs.length > 1 ? 's' : ''}`}
             </span>
-            <span className="text-xs text-gray-400 ml-auto">Polling every 3s</span>
+            {!stalled && <span className="text-xs text-gray-400 ml-auto">Polling every 3s</span>}
           </div>
 
           <div className="space-y-3">
@@ -129,7 +152,9 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
           </div>
 
           <p className="text-xs text-gray-400 mt-3">
-            The Python worker is running in the background. This page updates automatically.
+            {stalled
+              ? `Still showing as pending after ${STALE_MINUTES} min. Check Railway logs to confirm the worker is running.`
+              : 'The Python worker is running in the background. This page updates automatically.'}
           </p>
         </div>
       )}
