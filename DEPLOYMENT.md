@@ -79,7 +79,7 @@ Supabase stores all articles in a PostgreSQL database, and stores uploaded PDFs 
 3. Click **New project**
 4. Fill in:
    - **Name**: `hsa` (or anything)
-   - **Database Password**: Generate a strong password and save it somewhere safe
+   - **Database Password**: "hfanewsletterHindus@108$" Generate a strong password and save it somewhere safe
    - **Region**: Pick the one closest to you geographically
 5. Click **Create new project** and wait 1–2 minutes for it to spin up
 
@@ -111,15 +111,18 @@ You need three values from Supabase. Keep a notepad open and write them down.
 **SUPABASE_URL:**
 1. Click **Settings** (gear icon) in the left sidebar → **API**
 2. Copy the **Project URL** — looks like `https://abcdefgh.supabase.co`
+https://xjjywpcqsfaoesnxomvp.supabase.co
 
 **SUPABASE_KEY (anon key):**
 1. Same page (**Settings → API**)
 2. Under **Project API keys**, copy the `anon` `public` key
+anon = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhqanl3cGNxc2Zhb2VzbnhvbXZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MjQ4MTQsImV4cCI6MjA5MDIwMDgxNH0.wI36EzMCwQBcXy9UqlXvrWsInnmTTMIbLNUCyljQBSw
 
 **SUPABASE_SERVICE_KEY (service role key):**
 1. Same page (**Settings → API**)
 2. Under **Project API keys**, copy the `service_role` key
 3. ⚠️ This key has full database access — never put it in client-side code or commit it to Git
+service_role = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhqanl3cGNxc2Zhb2VzbnhvbXZwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDYyNDgxNCwiZXhwIjoyMDkwMjAwODE0fQ.8R50KgBjAq7snj38z0EH1gqB70wRbQjihEn9uf6aUuw
 
 ---
 
