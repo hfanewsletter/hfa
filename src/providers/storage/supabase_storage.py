@@ -66,12 +66,15 @@ class SupabaseStorageProvider(StorageProvider):
 
     def _list_folder(self, folder: str) -> List[str]:
         try:
-            items = self.client.storage.from_(BUCKET).list(folder) or []
+            raw = self.client.storage.from_(BUCKET).list(folder)
+            logger.info("Storage list('%s') raw response type=%s value=%s", folder, type(raw).__name__, raw)
+            items = raw or []
             paths = [
                 f"{folder}/{item['name']}"
                 for item in items
                 if isinstance(item, dict) and item.get("name", "").lower().endswith(".pdf")
             ]
+            logger.info("Storage list('%s') found PDFs: %s", folder, paths)
             return sorted(paths)
         except Exception as e:
             logger.error("Failed to list Supabase Storage folder '%s': %s", folder, e)
