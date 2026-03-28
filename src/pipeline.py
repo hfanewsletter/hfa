@@ -3,7 +3,7 @@ import os
 from datetime import date, datetime, timezone
 from typing import List, Optional, Dict, Set
 
-from src.config_loader import load_config, AppConfig
+from src.config_loader import AppConfig
 from src.models import Article, ProcessedArticle
 from src.providers.llm import get_llm_provider
 from src.providers.storage import get_storage_provider
@@ -17,10 +17,6 @@ from src.summarizer import Summarizer
 from src.email_sender import EmailSender
 from src.digest_store import DigestStore
 from src.date_detector import detect_newspaper_date
-
-# Directory where article thumbnails are served by Next.js
-_SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ARTICLE_IMAGES_DIR = os.path.join(_SCRIPT_DIR, "web", "public", "images", "articles")
 
 logger = logging.getLogger(__name__)
 
@@ -106,19 +102,15 @@ class Pipeline:
         # --- Stage 1: Extract articles from ALL PDFs ---
         all_articles: List[Article] = []
         pdf_records: List[PDFRecord] = []
-        pdf_bytes_cache: Dict[str, bytes] = {}     # pdf_path → bytes for thumbnail extraction
         pdf_newspaper_dates: Dict[str, date] = {}  # pdf_path → detected newspaper date
         stale_pdf_paths: Set[str] = set()          # PDFs too old to include in email
         failed_pdfs: Set[str] = set()              # PDFs that failed extraction
-
-        os.makedirs(ARTICLE_IMAGES_DIR, exist_ok=True)
 
         for pdf_path in pdf_paths:
             filename = os.path.basename(pdf_path)
             pdf_record_id = None
             try:
                 pdf_bytes = self.storage.read_file(pdf_path)
-                pdf_bytes_cache[pdf_path] = pdf_bytes
 
                 # Detect newspaper publication date:
                 # 1. filename  2. PDF metadata  3. first page text  4. Gemini reads front page
@@ -230,6 +222,10 @@ class Pipeline:
                 max_score = max(a.importance_score for a in group_articles)
                 final_score = min(10, round(max_score + (len(group_articles) - 1) * 0.5))
 
+                group_source_pdfs = list({
+                    os.path.basename(a.source_pdf) for a in group_articles
+                })
+
                 pa = ProcessedArticle(
                     article=primary,
                     summary="",               # filled by summarizer below
@@ -238,6 +234,7 @@ class Pipeline:
                     is_duplicate=False,
                     rewritten_content=rewritten_content,
                     importance_score=final_score,
+                    source_pdfs=group_source_pdfs,
                 )
                 processed.append(pa)
 
@@ -254,28 +251,6 @@ class Pipeline:
                 continue
             try:
                 slug = generate_slug(pa.article.title)
-                source_pdfs = list({os.path.basename(a.source_pdf) for a in all_articles
-                                     if a.title == pa.article.title or True})
-                # Collect source PDFs for this group
-                source_pdfs = list({os.path.basename(pa.article.source_pdf)})
-
-                # Extract thumbnail from the article's source page
-                image_url = ""
-                pdf_bytes_for_img = pdf_bytes_cache.get(pa.article.source_pdf)
-                if pdf_bytes_for_img:
-                    thumb = self.pdf_processor.extract_page_thumbnail(
-                        pdf_bytes_for_img, pa.article.page_number
-                    )
-                    if thumb:
-                        img_filename = f"{slug}.jpg"
-                        img_path = os.path.join(ARTICLE_IMAGES_DIR, img_filename)
-                        try:
-                            with open(img_path, "wb") as f:
-                                f.write(thumb)
-                            image_url = f"/images/articles/{img_filename}"
-                            logger.debug("Saved thumbnail: %s", img_path)
-                        except OSError as e:
-                            logger.warning("Could not save thumbnail for '%s': %s", slug, e)
 
                 # Use the detected newspaper date as published_at (not today's date)
                 raw_date = pdf_newspaper_dates.get(pa.article.source_pdf)
@@ -292,17 +267,16 @@ class Pipeline:
                     summary=pa.summary,
                     category=pa.article.category,
                     embedding=pa.embedding,
-                    source_pdfs=source_pdfs,
+                    source_pdfs=pa.source_pdfs,
                     published_at=published_at,
                     importance_score=pa.importance_score,
                     is_breaking=pa.importance_score >= 9,
                     website_url=pa.pdf_link,
-                    image_url=image_url,
+                    image_url="",
                 )
                 saved_slug = self.db.save_article(record)
-                # Update website_url and image_url in case slug was made unique by the DB
+                # Update website_url in case slug was made unique by the DB
                 pa.pdf_link = f"{self.config.website.base_url}/article/{saved_slug}"
-                pa.image_url = image_url
 
             except Exception as e:
                 logger.error("Failed to save article '%s' to DB: %s", pa.article.title, e, exc_info=True)

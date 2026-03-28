@@ -36,8 +36,8 @@ email:
 # Website Configuration
 website:
   # Base URL used for "Read Full Article" links in the email.
-  # Change to your production domain once deployed.
-  base_url: "http://localhost:3001"
+  # Override with WEBSITE_BASE_URL env var in production.
+  base_url: "http://localhost:3000"
 
 # Rewriter Configuration
 rewriter:

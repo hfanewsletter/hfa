@@ -144,6 +144,24 @@ class SupabaseDBProvider(DBProvider):
     # ------------------------------------------------------------------
 
     def save_pdf_record(self, record: PDFRecord) -> int:
+        # Try to find and update an existing record (created by the web UI upload)
+        existing = (
+            self.client.table("pdfs")
+            .select("id")
+            .eq("filename", record.filename)
+            .in_("status", ["pending", "processing"])
+            .order("uploaded_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            pdf_id = existing.data[0]["id"]
+            self.client.table("pdfs").update({
+                "status": record.status,
+                "article_count": record.article_count,
+            }).eq("id", pdf_id).execute()
+            return pdf_id
+
         response = self.client.table("pdfs").insert({
             "filename": record.filename,
             "storage_url": record.storage_url,

@@ -243,6 +243,19 @@ class SQLiteDBProvider(DBProvider):
     def save_pdf_record(self, record: PDFRecord) -> int:
         conn = self._connect()
         try:
+            # Try to find and update an existing record (created by the web UI upload)
+            row = conn.execute(
+                "SELECT id FROM pdfs WHERE filename = ? AND status IN ('pending', 'processing') ORDER BY uploaded_at DESC LIMIT 1",
+                (record.filename,),
+            ).fetchone()
+            if row:
+                conn.execute(
+                    "UPDATE pdfs SET status = ?, article_count = ? WHERE id = ?",
+                    (record.status, record.article_count, row["id"]),
+                )
+                conn.commit()
+                return row["id"]
+
             cursor = conn.execute(
                 """INSERT INTO pdfs (filename, storage_url, status, article_count, uploaded_at, processed_at)
                    VALUES (?, ?, ?, ?, ?, ?)""",

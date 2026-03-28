@@ -66,20 +66,15 @@ class SupabaseStorageProvider(StorageProvider):
 
     def _list_folder(self, folder: str) -> List[str]:
         try:
-            # Try with trailing slash (Supabase requires this to list folder contents)
-            raw = self.client.storage.from_(BUCKET).list(f"{folder}/")
-            logger.info("Storage list('%s/') raw response type=%s value=%s", folder, type(raw).__name__, raw)
-            # Fallback: try without trailing slash if above returns empty
-            if not raw:
-                raw = self.client.storage.from_(BUCKET).list(folder)
-                logger.info("Storage list('%s') fallback type=%s value=%s", folder, type(raw).__name__, raw)
+            raw = self.client.storage.from_(BUCKET).list(folder)
             items = raw or []
             paths = [
                 f"{folder}/{item['name']}"
                 for item in items
                 if isinstance(item, dict) and item.get("name", "").lower().endswith(".pdf")
             ]
-            logger.info("Storage list('%s') found PDFs: %s", folder, paths)
+            if paths:
+                logger.info("Found %d PDF(s) in '%s/'", len(paths), folder)
             return sorted(paths)
         except Exception as e:
             logger.error("Failed to list Supabase Storage folder '%s': %s", folder, e)

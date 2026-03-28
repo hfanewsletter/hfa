@@ -12,7 +12,6 @@ class Article:
     source_pdf: str       # Absolute path to the source PDF file
     category: str = "General"       # Category assigned by LLM (e.g. Politics, Business, Sports)
     importance_score: int = 5       # 1-10 score assigned by LLM (1=trivial, 10=historic breaking)
-    image_url: str = ""             # URL of the extracted article thumbnail image
 
 
 @dataclass
@@ -26,5 +25,5 @@ class ProcessedArticle:
     duplicate_of: Optional[str] = None   # title of original if duplicate
     rewritten_content: str = ""   # 300-500 word unified article for the website
     processed_at: datetime = field(default_factory=datetime.now)
-    image_url: str = ""             # URL of the extracted article thumbnail image
     importance_score: int = 5       # 1-10 final score (boosted for cross-paper consensus)
+    source_pdfs: List[str] = field(default_factory=list)  # all source PDF filenames in the group
