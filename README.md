@@ -92,14 +92,14 @@ Once you have the prerequisites above, starting the entire app is a single comma
 
 **Mac / Linux:**
 ```bash
-git clone https://github.com/TanmayKnight/hsa.git
+git clone https://github.com/hfanewsletter/hfa.git
 cd hsa
 ./start.sh
 ```
 
 **Windows:**
 ```cmd
-git clone https://github.com/TanmayKnight/hsa.git
+git clone https://github.com/hfanewsletter/hfa.git
 cd hsa
 start.bat
 ```
@@ -110,7 +110,7 @@ The script will:
 - Create `.env` and `web/.env.local` from the example templates if they are missing
 - Create all required folders (`inbox/`, `editorial_inbox/`, `processed/`, `logs/`, `data/`)
 - Start the Python pipeline worker in the background
-- Start the Next.js website at **http://localhost:3001**
+- Start the Next.js website at **http://localhost:3000**
 
 > **First run only:** The script will pause and ask you to fill in `.env` with your API key and email credentials before continuing. Open `.env` in any text editor, fill in the required fields, save, then press Enter to continue.
 
@@ -136,12 +136,12 @@ EMAIL_PASSWORD=your_16_char_gmail_app_password
 ADMIN_PASSWORD=CHANGE_THIS_TO_A_STRONG_RANDOM_PASSWORD
 
 # ── OPTIONAL (defaults work for local dev) ───────────────────
-WEBSITE_BASE_URL=http://localhost:3001   # change to your domain in production
+WEBSITE_BASE_URL=http://localhost:3000   # change to your domain in production
 
 # ── LEAVE BLANK for local dev (SQLite is used automatically) ─
 SUPABASE_URL=
-SUPABASE_KEY=
-SUPABASE_STORAGE_BUCKET=
+SUPABASE_SERVICE_KEY=
+STORAGE_PROVIDER=local
 ```
 
 | Variable | Required | Description |
@@ -150,10 +150,10 @@ SUPABASE_STORAGE_BUCKET=
 | `EMAIL_SENDER` | **Yes** | Gmail address the digest is sent from |
 | `EMAIL_PASSWORD` | **Yes** | Gmail App Password (16-char code, not your real password) |
 | `ADMIN_PASSWORD` | **Yes** | Password for `/admin`. Must be 20+ random characters in production. Generate with `openssl rand -base64 20` |
-| `WEBSITE_BASE_URL` | No | Base URL for "Read Full Article" links in the email. Defaults to `http://localhost:3001` |
-| `SUPABASE_URL` | Production only | Leave blank for local dev |
-| `SUPABASE_KEY` | Production only | Leave blank for local dev |
-| `SUPABASE_STORAGE_BUCKET` | Production only | Leave blank for local dev |
+| `WEBSITE_BASE_URL` | No | Base URL for "Read Full Article" links in the email. Defaults to `http://localhost:3000` |
+| `SUPABASE_URL` | Production only | Supabase project URL. Leave blank for local dev (SQLite is used automatically) |
+| `SUPABASE_SERVICE_KEY` | Production only | Supabase **service role** key (bypasses RLS). Required for the Python pipeline to read/write the database and storage |
+| `STORAGE_PROVIDER` | Production only | Set to `supabase` for production. Defaults to `local` |
 
 ### Required — `config/config.yaml` (application settings)
 
@@ -190,7 +190,7 @@ If a PDF's publication date is older than this many days, its articles are still
 | `deduplication.similarity_threshold` | `0.85` | Similarity threshold for skipping already-published stories |
 | `email.send_immediately` | `true` | Set to `false` to schedule sends instead of sending right after processing |
 | `email.schedule_cron` | `0 8 * * *` | Cron schedule used when `send_immediately` is false |
-| `website.base_url` | `http://localhost:3001` | Overridden by `WEBSITE_BASE_URL` in `.env` |
+| `website.base_url` | `http://localhost:3000` | Overridden by `WEBSITE_BASE_URL` in `.env` |
 
 ---
 
@@ -210,10 +210,7 @@ hsa/
 │   └── weekly_editions/      ← Generated PDF newspapers saved here
 ├── config/
 │   └── config.yaml           ← Main settings (subscribers, thresholds, inboxes)
-├── web/
-│   └── public/
-│       └── images/
-│           └── articles/     ← Extracted page thumbnails (served by Next.js)
+├── web/                      ← Next.js website source
 ├── src/                      ← Python pipeline source code
 ├── web/                      ← Next.js website
 ├── templates/                ← Email HTML template (Jinja2)
@@ -228,17 +225,18 @@ hsa/
 
 ## Processing a Newspaper
 
-Once the app is running, **drop PDF files into the `inbox/` folder** or upload via the admin panel at `http://localhost:3001/admin`.
+Once the app is running, **drop PDF files into the `inbox/` folder** or upload via the admin panel at `http://localhost:3000/admin`.
 
 The pipeline will:
 1. Detect the file(s) within a few seconds (5-second settle timer to batch simultaneous drops)
 2. Detect the newspaper's publication date using the 4-step chain (see below)
 3. Extract all articles from every page in parallel (text or Gemini Vision OCR)
-4. Extract a thumbnail from each article's source page
+4. Skip PDFs that have already been processed (prevents infinite re-processing if move fails)
 5. Group same-story articles across newspapers and rewrite each into one unified article
 6. Skip any stories already published in a previous run (semantic deduplication)
-7. Send the email digest to all subscribers
-8. Move the processed PDFs to `processed/`
+7. Save articles to the database with website URLs
+8. Send the email digest to all subscribers (digest is only saved after confirmed delivery)
+9. Move the processed PDFs to `processed/`
 
 For **editorial PDFs** (dropped into `editorial_inbox/`):
 - Each article is kept as its own story — no cross-paper grouping
@@ -346,7 +344,7 @@ This loads the last saved digest from the database and resends — no PDF reproc
 
 ```bash
 # 1. Clone and enter the project
-git clone https://github.com/TanmayKnight/hsa.git
+git clone https://github.com/hfanewsletter/hfa.git
 cd hsa
 
 # 2. Create and activate a Python virtual environment
@@ -362,7 +360,7 @@ cp .env.example .env
 # Open .env and fill in LLM_API_KEY, EMAIL_SENDER, EMAIL_PASSWORD, ADMIN_PASSWORD
 
 # 5. Create required folders
-mkdir -p inbox editorial_inbox processed logs data data/weekly_editions web/public/images/articles
+mkdir -p inbox editorial_inbox processed logs data data/weekly_editions
 
 # 6. Start the Python worker
 python src/main.py --process-existing
@@ -412,7 +410,7 @@ Check `logs/app.log`. Common causes:
 The login is rate-limited to 5 failed attempts per 15 minutes per IP address. Wait 15 minutes, then try again.
 
 ### Admin panel shows PDF stuck as "Processing"
-This happens if the Python worker crashes mid-run. Re-upload the PDF — the pipeline will process it again.
+This happens if the Python worker crashes mid-run. The pipeline has safeguards: on the next run, it checks the database for already-processed filenames and skips them. If a PDF is genuinely stuck, delete the record from the `pdfs` table in the database and re-upload.
 
 ### "Times" label appears but Editorial nav link is missing
 The "Editorial" link in the navigation only appears when there are editorial articles published today. Upload an editorial PDF via the admin panel to see it.
@@ -449,7 +447,7 @@ editorial_inbox/          ← editorials (each article kept separate, forced "Ed
 src/watcher.py              watchdog observer on both inboxes → 5s settle timer → triggers pipeline
 src/pipeline.py             orchestrates the full flow
   ├─ src/date_detector.py        4-step date chain: filename → metadata → text → Gemini Vision
-  ├─ src/pdf_processor.py        pymupdf: text vs image pages, thumbnail extraction, first-page render
+  ├─ src/pdf_processor.py        pymupdf: text vs image pages, content extraction, first-page render
   ├─ src/article_extractor.py    LLM → List[Article] with title, content, category, importance_score
   ├─ src/rewriter.py             cosine-similarity grouping → rewrite_articles() → 300-500 word article
   │                              (editorial articles skip grouping — processed individually)
@@ -461,7 +459,6 @@ src/pipeline.py             orchestrates the full flow
        │
        ▼
 processed/                  ← PDFs moved here after processing
-web/public/images/articles/ ← page thumbnails served by Next.js
 
 src/weekly_scheduler.py     background thread: checks cron schedules every 60s
 src/newspaper_generator.py  Jinja2 + WeasyPrint → data/weekly_editions/edition_YYYYMMDD.pdf
@@ -479,12 +476,30 @@ src/newspaper_generator.py  Jinja2 + WeasyPrint → data/weekly_editions/edition
 
 | Part | Local dev | Production |
 |---|---|---|
-| Web frontend + API | `npm run dev` (port 3001) | Vercel |
-| PDF pipeline worker | Python process | Railway or Render |
+| Web frontend + API | `npm run dev` (port 3000) | Netlify |
+| PDF pipeline worker | Python process | Railway |
 | Database | SQLite (`data/articles.db`) | Supabase PostgreSQL |
 | File storage | Local `inbox/` / `processed/` | Supabase Storage |
 
-To switch to production: set `SUPABASE_URL`, `SUPABASE_KEY`, `SUPABASE_STORAGE_BUCKET`, and `WEBSITE_BASE_URL` in `.env`. Run `scripts/supabase_schema.sql` in the Supabase SQL editor to create all tables, indexes, and stored procedures.
+### Production setup
+
+1. Run `scripts/supabase_schema.sql` in the Supabase SQL editor to create all tables, indexes, and stored procedures
+2. Set these environment variables on Railway (Python worker):
+
+| Variable | Value |
+|---|---|
+| `LLM_API_KEY` | Gemini API key |
+| `EMAIL_SENDER` | Gmail address |
+| `EMAIL_PASSWORD` | Gmail App Password |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SERVICE_KEY` | Supabase **service role** key (not the anon key) |
+| `STORAGE_PROVIDER` | `supabase` |
+| `WEBSITE_BASE_URL` | Your production domain (e.g. `https://yoursite.netlify.app`) |
+| `ADMIN_PASSWORD` | Strong random password |
+
+3. Set `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_PASSWORD`, and `AUTH_SECRET` in Netlify environment variables for the web frontend
+
+> **Important:** The Python pipeline uses `SUPABASE_SERVICE_KEY` (service role key) which bypasses Row Level Security. The anon key will silently fail to write data. On Railway, the pipeline uses `CloudStoragePoller` to poll Supabase Storage every 30 seconds for new PDFs (since `watchdog` only monitors local filesystems).
 
 ---
 
