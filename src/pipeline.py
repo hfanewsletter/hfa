@@ -73,6 +73,11 @@ class Pipeline:
         if pdf_paths is None:
             pdf_paths = self.storage.list_new_files()
 
+        # Skip PDFs that have already been processed (prevents infinite re-processing
+        # when move_to_processed fails and the file stays in inbox/)
+        if pdf_paths:
+            pdf_paths = self._filter_already_processed(pdf_paths)
+
         # Also scan editorial inbox (separate folder, articles forced to "Editorial" category)
         editorial_pdf_set: Set[str] = set()
         editorial_inbox = self.config.storage.editorial_inbox_path
@@ -317,6 +322,28 @@ class Pipeline:
         elapsed = time.time() - start_time
         mins, secs = divmod(int(elapsed), 60)
         logger.info("Total pipeline time: %dm %ds", mins, secs)
+
+    def _filter_already_processed(self, pdf_paths: List[str]) -> List[str]:
+        """Filter out PDFs that already have a 'processed' record in the DB."""
+        try:
+            processed_filenames = self.db.get_processed_filenames()
+        except Exception as e:
+            logger.warning("Could not check processed PDFs in DB: %s", e)
+            return pdf_paths
+
+        filtered = []
+        for path in pdf_paths:
+            filename = os.path.basename(path)
+            if filename in processed_filenames:
+                logger.info("Skipping '%s' — already processed. Removing from inbox.", filename)
+                # Clean up the stale inbox file
+                try:
+                    self.storage.move_to_processed(path)
+                except Exception:
+                    pass
+            else:
+                filtered.append(path)
+        return filtered
 
     def _move_and_finalize(
         self,

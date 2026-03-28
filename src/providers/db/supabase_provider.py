@@ -188,6 +188,15 @@ class SupabaseDBProvider(DBProvider):
         )
         return [self._row_to_pdf(r) for r in (response.data or [])]
 
+    def get_processed_filenames(self) -> set:
+        response = (
+            self.client.table("pdfs")
+            .select("filename")
+            .eq("status", "processed")
+            .execute()
+        )
+        return {r["filename"] for r in (response.data or [])}
+
     def _row_to_pdf(self, row: dict) -> PDFRecord:
         return PDFRecord(
             id=row.get("id"),

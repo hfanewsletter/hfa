@@ -90,6 +90,10 @@ class DBProvider(ABC):
     def get_pending_pdfs(self) -> List[PDFRecord]:
         """Return all PDFs with status='pending' (used by Supabase storage provider)."""
 
+    def get_processed_filenames(self) -> set:
+        """Return a set of filenames that have status='processed'. Used to skip re-processing."""
+        return set()
+
     @abstractmethod
     def save_digest(self, batch_id: str, article_slugs: List[str]) -> None:
         """Record that a digest email was sent for these article slugs."""

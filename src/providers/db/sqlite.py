@@ -293,6 +293,14 @@ class SQLiteDBProvider(DBProvider):
         conn.close()
         return [self._row_to_pdf(r) for r in rows]
 
+    def get_processed_filenames(self) -> set:
+        conn = self._connect()
+        rows = conn.execute(
+            "SELECT DISTINCT filename FROM pdfs WHERE status = 'processed'"
+        ).fetchall()
+        conn.close()
+        return {r["filename"] for r in rows}
+
     def _row_to_pdf(self, row: sqlite3.Row) -> PDFRecord:
         return PDFRecord(
             id=row["id"],

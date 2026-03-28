@@ -50,8 +50,13 @@ class SupabaseStorageProvider(StorageProvider):
         try:
             self.client.storage.from_(BUCKET).move(file_path, dest)
             logger.info("Moved %s → %s", file_path, dest)
-        except Exception as e:
-            logger.warning("Could not move %s to processed: %s", file_path, e)
+        except Exception:
+            # Move fails if destination already exists — delete the inbox copy instead
+            try:
+                self.client.storage.from_(BUCKET).remove([file_path])
+                logger.info("Deleted %s from inbox (already in processed/)", file_path)
+            except Exception as e2:
+                logger.error("Could not move or delete %s: %s", file_path, e2)
         return dest
 
     def get_file_url(self, file_path: str) -> str:
