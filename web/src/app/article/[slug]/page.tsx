@@ -60,9 +60,6 @@ export default async function ArticlePage({ params }: Props) {
 
             <div className="flex items-center gap-4 text-xs text-gray-400 pb-5 mb-6 border-b border-gray-200">
               <span>{formatDate(article.published_at)}</span>
-              {article.source_pdfs.length > 0 && (
-                <span>Sources: {article.source_pdfs.join(', ')}</span>
-              )}
             </div>
 
             {/* Summary callout */}
@@ -101,12 +98,6 @@ export default async function ArticlePage({ params }: Props) {
                   </Link>
                 </dd>
               </div>
-              {article.source_pdfs.length > 0 && (
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-0.5">Source{article.source_pdfs.length > 1 ? 's' : ''}</dt>
-                  <dd className="text-xs leading-relaxed">{article.source_pdfs.join(' · ')}</dd>
-                </div>
-              )}
             </dl>
 
             <div className="mt-5 pt-4 border-t border-gray-100">

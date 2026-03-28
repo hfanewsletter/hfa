@@ -22,14 +22,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export const revalidate = 300
 
+const SIDEBAR_LIMIT = 8
+
 function buildEditionLayout(articles: Article[]) {
-  // Mirror homepage layout: first article as hero, next 4 as featured grid, rest as latest list
   const breaking = articles.find(a => a.is_breaking) ?? articles[0] ?? null
   const rest = articles.filter(a => a.slug !== breaking?.slug)
   return {
     hero: breaking,
     featured: rest.slice(0, 4),
-    latest: rest.slice(4),
+    sidebar: rest.slice(4, 4 + SIDEBAR_LIMIT),
+    remaining: rest.slice(4 + SIDEBAR_LIMIT),
   }
 }
 
@@ -46,7 +48,7 @@ export default async function ArchiveDatePage({ params }: Props) {
 
   if (articles.length === 0) notFound()
 
-  const { hero, featured, latest } = buildEditionLayout(articles)
+  const { hero, featured, sidebar, remaining } = buildEditionLayout(articles)
 
   const editionLabel = new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
@@ -63,25 +65,17 @@ export default async function ArchiveDatePage({ params }: Props) {
         >
           ← Back to Archive
         </Link>
-        <div className="flex items-end justify-between flex-wrap gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">
-              The American Express Times
-            </p>
-            <h1 className="font-serif text-3xl md:text-4xl font-bold text-primary">
-              {editionLabel}
-            </h1>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-gray-400 uppercase tracking-wider">Edition</p>
-            <p className="font-serif text-lg font-bold text-accent">
-              {articles.length} article{articles.length !== 1 ? 's' : ''}
-            </p>
-          </div>
+        <div>
+          <p className="text-xs uppercase tracking-widest text-gray-400 mb-1">
+            The American Express Times
+          </p>
+          <h1 className="font-serif text-3xl md:text-4xl font-bold text-primary">
+            {editionLabel}
+          </h1>
         </div>
       </div>
 
-      {/* Edition layout — mirrors homepage */}
+      {/* Top section: hero + featured | sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
         {/* Main column */}
@@ -90,23 +84,21 @@ export default async function ArchiveDatePage({ params }: Props) {
           {featured.length > 0 && <StoryGrid articles={featured} />}
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar — limited to a few articles */}
         <aside className="lg:col-span-1 space-y-6">
-          {/* More from this edition */}
-          {latest.length > 0 && (
+          {sidebar.length > 0 && (
             <div className="bg-white rounded border border-gray-200 p-5">
               <h3 className="font-serif font-bold text-primary mb-4 pb-2 border-b border-gray-100 flex items-center gap-2">
                 <span className="text-accent">★</span> More from this edition
               </h3>
               <div className="space-y-1">
-                {latest.map(a => (
+                {sidebar.map(a => (
                   <ArticleCard key={a.slug} article={a} variant="list" />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Navigate editions */}
           <div className="bg-white rounded border border-gray-200 p-5">
             <h3 className="font-serif font-bold text-primary mb-3 text-sm uppercase tracking-wider">
               Browse Archive
@@ -121,6 +113,20 @@ export default async function ArchiveDatePage({ params }: Props) {
         </aside>
 
       </div>
+
+      {/* Remaining articles — full-width grid */}
+      {remaining.length > 0 && (
+        <section className="mt-10 pt-8 border-t-2 border-gray-200">
+          <h2 className="font-serif font-bold text-primary text-xl mb-6 flex items-center gap-2">
+            <span className="text-accent">★</span> All Stories
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {remaining.map(a => (
+              <ArticleCard key={a.slug} article={a} variant="grid" />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
