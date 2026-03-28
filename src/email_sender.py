@@ -11,6 +11,8 @@ from src.models import ProcessedArticle
 
 logger = logging.getLogger(__name__)
 
+SMTP_TIMEOUT = 30  # seconds
+
 
 class EmailSender:
 
@@ -23,25 +25,52 @@ class EmailSender:
         template_dir = Path(__file__).parent.parent / "templates"
         self.jinja_env = Environment(loader=FileSystemLoader(str(template_dir)))
 
-    def send_digest(self, articles: List[ProcessedArticle]) -> None:
+    def send_digest(self, articles: List[ProcessedArticle]) -> bool:
         """
         Send the news digest email to all subscribers.
-        Only sends non-duplicate articles.
+        Returns True if at least one email was sent successfully.
         """
         unique_articles = [a for a in articles if not a.is_duplicate]
         if not unique_articles:
             logger.info("No unique articles to send in digest.")
-            return
+            return False
+
+        if not self.config.sender or not self.config.password:
+            logger.error(
+                "EMAIL_SENDER or EMAIL_PASSWORD not set — cannot send digest. "
+                "sender=%s, password=%s",
+                self.config.sender or "(empty)",
+                "set" if self.config.password else "(empty)",
+            )
+            return False
+
+        if not self.config.subscribers:
+            logger.warning("No subscribers configured — skipping email digest.")
+            return False
 
         subject = f"News Digest — {datetime.now().strftime('%B %d, %Y')}"
-        html_body = self._render_template(unique_articles)
 
+        try:
+            html_body = self._render_template(unique_articles)
+        except Exception as e:
+            logger.error("Failed to render email template: %s", e, exc_info=True)
+            return False
+
+        sent_count = 0
         for recipient in self.config.subscribers:
             try:
                 self._send_email(recipient, subject, html_body)
+                sent_count += 1
                 logger.info("Digest sent to %s (%d articles)", recipient, len(unique_articles))
             except Exception as e:
-                logger.error("Failed to send email to %s: %s", recipient, e)
+                logger.error("Failed to send email to %s: %s", recipient, e, exc_info=True)
+
+        if sent_count == 0:
+            logger.error("Email digest failed for ALL %d subscribers.", len(self.config.subscribers))
+        else:
+            logger.info("Email digest delivered to %d/%d subscribers.", sent_count, len(self.config.subscribers))
+
+        return sent_count > 0
 
     def _render_template(self, articles: List[ProcessedArticle]) -> str:
         template = self.jinja_env.get_template("email_digest.html")
@@ -62,7 +91,7 @@ class EmailSender:
         msg["To"] = recipient
         msg.attach(MIMEText(html_body, "html"))
 
-        with smtplib.SMTP(self.config.smtp_host, self.config.smtp_port) as server:
+        with smtplib.SMTP(self.config.smtp_host, self.config.smtp_port, timeout=SMTP_TIMEOUT) as server:
             server.ehlo()
             server.starttls()
             server.login(self.config.sender, self.config.password)

@@ -301,20 +301,23 @@ class Pipeline:
         ]
 
         if unique_count > 0:
-            self.digest_store.save_digest(processed)
-
             if not email_articles:
                 logger.info(
                     "All %d articles are from stale newspapers — skipping email digest.", unique_count
                 )
             elif self.config.email.send_immediately:
                 logger.info("Sending email digest (%d articles)...", len(email_articles))
-                self.email_sender.send_digest(email_articles)
+                email_sent = self.email_sender.send_digest(email_articles)
+                if email_sent:
+                    self.digest_store.save_digest(processed)
+                else:
+                    logger.warning("Digest NOT saved — email delivery failed.")
             else:
                 logger.info(
                     "send_immediately=false — digest queued for scheduled send (%s)",
                     self.config.email.schedule_cron,
                 )
+                self.digest_store.save_digest(processed)
 
         # --- Stage 9: Move PDFs + update records ---
         self._move_and_finalize(pdf_paths, pdf_records, article_count=unique_count, failed_pdfs=failed_pdfs)
