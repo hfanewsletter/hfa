@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getDB } from '@/lib/db'
 import { categoryColor, formatDate } from '@/lib/utils'
+import ShareButtons from '@/components/article/ShareButtons'
 
 interface Props {
   params: Promise<{ slug: string }>
@@ -58,8 +59,12 @@ export default async function ArticlePage({ params }: Props) {
               {article.title}
             </h1>
 
-            <div className="flex items-center gap-4 text-xs text-gray-400 pb-5 mb-6 border-b border-gray-200">
-              <span>{formatDate(article.published_at)}</span>
+            <div className="flex items-center justify-between pb-5 mb-6 border-b border-gray-200">
+              <span className="text-xs text-gray-400">{formatDate(article.published_at)}</span>
+              <ShareButtons
+                title={article.title}
+                url={`${process.env.WEBSITE_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/article/${slug}`}
+              />
             </div>
 
             {/* Summary callout */}

@@ -181,6 +181,7 @@ If all four fail, `published_at` defaults to today's date.
 - Category-specific colours defined in `web/src/lib/utils.ts`
 - `"Times"` in the masthead is intentionally small/subtle (30% size, 60% opacity)
 - Edition page (`/archive/:date`): sidebar limited to 8 articles, remaining flow into full-width 3-column grid below
+- **Share buttons** on article pages: X, Facebook, WhatsApp, copy link — URL-based sharing, no SDKs or tracking
 
 ## Subscriber management
 

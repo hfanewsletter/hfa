@@ -294,7 +294,7 @@ Editorial articles are excluded from the homepage scoring and appear only on `/e
 | `/` | Homepage — today's articles only: breaking banner, hero, featured grid, latest sidebar |
 | `/editorial` | Today's editorial articles (link only visible when editorials exist) |
 | `/section/politics` | All articles in a category (Editorial excluded from category nav) |
-| `/article/some-slug` | Full 300–500 word rewritten article |
+| `/article/some-slug` | Full rewritten article with share buttons (X, Facebook, WhatsApp, copy link) |
 | `/archive` | All editions grouped by month |
 | `/archive/2026-03-23` | A specific past edition in full homepage layout |
 | `/newsletter` | Archive of all sent email digests |
