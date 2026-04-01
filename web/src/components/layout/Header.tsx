@@ -67,6 +67,7 @@ export default function Header() {
               height={120}
               className="h-32 w-auto object-contain"
               aria-hidden="true"
+              priority
             />
           </div>
         </Link>
