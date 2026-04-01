@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import type { Article } from '@/lib/types'
 import ArticleCard from '@/components/article/ArticleCard'
-import NewsletterModal from '@/components/newsletter/NewsletterModal'
 
 interface SidebarProps {
   latest: Article[]
@@ -44,16 +43,6 @@ export default function Sidebar({ latest, categories }: SidebarProps) {
           </div>
         </div>
       )}
-
-      {/* Newsletter CTA */}
-      <div id="newsletter-signup" className="bg-primary text-white rounded border-l-4 border-accent p-5">
-        <h3 className="font-serif text-lg font-bold mb-1">Daily Digest</h3>
-        <p className="text-blue-200 text-xs uppercase tracking-widest mb-3">The American Express Times</p>
-        <p className="text-blue-200 text-sm mb-4 leading-relaxed">
-          Get a curated summary of the day&apos;s top stories delivered to your inbox every morning.
-        </p>
-        <NewsletterModal />
-      </div>
 
     </aside>
   )

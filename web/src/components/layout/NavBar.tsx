@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import NewsletterModal from '@/components/newsletter/NewsletterModal'
 
 interface NavBarProps {
   categories: string[]
@@ -88,6 +89,14 @@ export default function NavBar({ categories, hasEditorialsToday = false }: NavBa
           >
             Archive
           </Link>
+
+          {/* Spacer pushes Join Newsletter to the right */}
+          <div className="flex-1" />
+
+          {/* Join Newsletter */}
+          <div className="py-1.5">
+            <NewsletterModal />
+          </div>
         </div>
       </div>
 
