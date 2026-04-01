@@ -36,10 +36,7 @@ class StorageConfig:
 @dataclass
 class EmailConfig:
     sender: str
-    password: str
     subscribers: List[str]
-    smtp_host: str
-    smtp_port: int
     send_immediately: bool
     schedule_cron: str
     title: str
@@ -90,11 +87,8 @@ def load_config(config_path: str = "config/config.yaml") -> AppConfig:
             ),
         ),
         email=EmailConfig(
-            sender=os.getenv("EMAIL_SENDER", ""),
-            password=os.getenv("EMAIL_PASSWORD", ""),
+            sender=os.getenv("EMAIL_SENDER", email_cfg.get("sender", "news@theamericanexpress.us")),
             subscribers=email_cfg.get("subscribers", []),
-            smtp_host=email_cfg["smtp_host"],
-            smtp_port=email_cfg["smtp_port"],
             send_immediately=email_cfg.get("send_immediately", True),
             schedule_cron=email_cfg.get("schedule_cron", "0 8 * * *"),
             title=email_cfg.get("title", "Daily News Digest"),

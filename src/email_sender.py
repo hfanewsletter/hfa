@@ -1,29 +1,31 @@
-import smtplib
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import os
 from typing import List
 from datetime import datetime
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
+import resend
 
 from src.models import ProcessedArticle
 
 logger = logging.getLogger(__name__)
-
-SMTP_TIMEOUT = 30  # seconds
 
 
 class EmailSender:
 
     def __init__(self, config):
         """
-        config: EmailConfig dataclass with sender, password, subscribers,
-                smtp_host, smtp_port, send_immediately, schedule_cron
+        config: EmailConfig dataclass with sender, subscribers,
+                send_immediately, schedule_cron, etc.
         """
         self.config = config
         template_dir = Path(__file__).parent.parent / "templates"
         self.jinja_env = Environment(loader=FileSystemLoader(str(template_dir)))
+
+        resend_api_key = os.getenv("RESEND_API_KEY", "")
+        if not resend_api_key:
+            logger.error("RESEND_API_KEY not set — cannot send emails.")
+        resend.api_key = resend_api_key
 
     def send_digest(self, articles: List[ProcessedArticle]) -> bool:
         """
@@ -35,13 +37,8 @@ class EmailSender:
             logger.info("No unique articles to send in digest.")
             return False
 
-        if not self.config.sender or not self.config.password:
-            logger.error(
-                "EMAIL_SENDER or EMAIL_PASSWORD not set — cannot send digest. "
-                "sender=%s, password=%s",
-                self.config.sender or "(empty)",
-                "set" if self.config.password else "(empty)",
-            )
+        if not os.getenv("RESEND_API_KEY", ""):
+            logger.error("RESEND_API_KEY not set — cannot send digest.")
             return False
 
         if not self.config.subscribers:
@@ -85,14 +82,11 @@ class EmailSender:
         )
 
     def _send_email(self, recipient: str, subject: str, html_body: str) -> None:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = self.config.sender
-        msg["To"] = recipient
-        msg.attach(MIMEText(html_body, "html"))
-
-        with smtplib.SMTP(self.config.smtp_host, self.config.smtp_port, timeout=SMTP_TIMEOUT) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(self.config.sender, self.config.password)
-            server.sendmail(self.config.sender, recipient, msg.as_string())
+        params = {
+            "from": f"{self.config.title} <{self.config.sender}>",
+            "to": [recipient],
+            "subject": subject,
+            "html": html_body,
+        }
+        response = resend.Emails.send(params)
+        logger.debug("Resend response for %s: %s", recipient, response)

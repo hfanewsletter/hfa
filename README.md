@@ -476,7 +476,7 @@ src/newspaper_generator.py  Jinja2 + WeasyPrint → data/weekly_editions/edition
 
 | Part | Local dev | Production |
 |---|---|---|
-| Web frontend + API | `npm run dev` (port 3000) | Netlify |
+| Web frontend + API | `npm run dev` (port 3000) | Render |
 | PDF pipeline worker | Python process | Railway |
 | Database | SQLite (`data/articles.db`) | Supabase PostgreSQL |
 | File storage | Local `inbox/` / `processed/` | Supabase Storage |
@@ -494,10 +494,10 @@ src/newspaper_generator.py  Jinja2 + WeasyPrint → data/weekly_editions/edition
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | Supabase **service role** key (not the anon key) |
 | `STORAGE_PROVIDER` | `supabase` |
-| `WEBSITE_BASE_URL` | Your production domain (e.g. `https://yoursite.netlify.app`) |
+| `WEBSITE_BASE_URL` | Your production domain (e.g. `https://yoursite.onrender.com`) |
 | `ADMIN_PASSWORD` | Strong random password |
 
-3. Set `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_PASSWORD`, and `AUTH_SECRET` in Netlify environment variables for the web frontend
+3. Set `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_PASSWORD`, and `AUTH_SECRET` in Render environment variables for the web frontend
 
 > **Important:** The Python pipeline uses `SUPABASE_SERVICE_KEY` (service role key) which bypasses Row Level Security. The anon key will silently fail to write data. On Railway, the pipeline uses `CloudStoragePoller` to poll Supabase Storage every 30 seconds for new PDFs (since `watchdog` only monitors local filesystems).
 

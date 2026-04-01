@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 
-const COOKIE_NAME = 'hsa_admin_session'
+const COOKIE_NAME = 'hfa_admin_session'
 
 function verifyToken(token: string): boolean {
   try {

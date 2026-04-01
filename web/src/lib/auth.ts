@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import { cookies } from 'next/headers'
 
-const COOKIE_NAME = 'hsa_admin_session'
+const COOKIE_NAME = 'hfa_admin_session'
 const TOKEN_TTL_MS = 8 * 60 * 60 * 1000 // 8 hours
 
 function secret(): string {

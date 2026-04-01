@@ -67,9 +67,9 @@ All runtime behaviour is controlled by `config/config.yaml` plus environment var
 | `SUPABASE_SERVICE_KEY` | Service role key (bypasses RLS, used by both DB and Storage providers) |
 | `LLM_API_KEY` | Gemini API key |
 | `STORAGE_PROVIDER` | Must be `supabase` (defaults to `local` from config.yaml) |
-| `WEBSITE_BASE_URL` | Netlify URL, e.g. `https://hsa-newsletter.netlify.app` (no trailing slash) |
-| `EMAIL_SENDER` | Gmail address for sending digests |
-| `EMAIL_PASSWORD` | Gmail App Password (16-char) |
+| `WEBSITE_BASE_URL` | Render URL, e.g. `https://hfa-hn9w.onrender.com` (no trailing slash) |
+| `EMAIL_SENDER` | Resend sender address (e.g. `news@theamericanexpress.us`) |
+| `RESEND_API_KEY` | Resend API key (starts with `re_`) |
 
 ## Architecture
 
@@ -96,7 +96,7 @@ src/pipeline.py           orchestrates the full flow
   ├─ src/providers/db/        saves articles + PDFs to SQLite (dev) or Supabase (prod)
   │    └─ data/articles.db    SQLite: articles, pdfs, digests, weekly_editions, schedules
   ├─ src/digest_store.py      saves digest record AFTER successful email delivery
-  └─ src/email_sender.py      Gmail SMTP (30s timeout) → renders templates/email_digest.html
+  └─ src/email_sender.py      Resend API → renders templates/email_digest.html
        │
        ▼
 processed/ (local folder or Supabase Storage "pdfs/processed/")
@@ -184,14 +184,14 @@ If all four fail, `published_at` defaults to today's date.
 - Template: `templates/email_digest.html` (Jinja2)
 - Logo loaded from `{{ website_base_url }}/logo.jpeg`
 - Variables passed: `articles`, `date`, `total_count`, `title`, `subscribe_url`, `unsubscribe_url`, `website_base_url`
-- SMTP timeout: 30 seconds. Credentials validated before connection attempt.
+- Sends via Resend HTTP API (no SMTP). Requires `RESEND_API_KEY` env var.
 - `send_digest()` returns `True`/`False` — digest record only saved on success.
 
 ## Tech stack
 
 | Part | Local dev | Production |
 |---|---|---|
-| Web (frontend + API) | Next.js `npm run dev` | Netlify |
+| Web (frontend + API) | Next.js `npm run dev` | Render |
 | Python pipeline | Background worker (watchdog) | Railway (CloudStoragePoller) |
 | Database | SQLite (`data/articles.db`) | Supabase PostgreSQL |
 | File storage | Local folders (`inbox/`, `processed/`) | Supabase Storage (bucket: `pdfs`) |

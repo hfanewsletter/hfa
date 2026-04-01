@@ -4,9 +4,9 @@ This guide walks you through deploying the app to production using four services
 
 | Service | What it does | Cost |
 |---|---|---|
-| **GitHub** | Hosts your code — Netlify and Railway pull from here | Free |
+| **GitHub** | Hosts your code — Render and Railway pull from here | Free |
 | **Supabase** | PostgreSQL database + PDF file storage | Free tier available |
-| **Netlify** | Hosts the Next.js website | Free tier available |
+| **Render** | Hosts the Next.js website | Free tier available |
 | **Railway** | Runs the Python pipeline worker | ~$5/month |
 
 ---
@@ -17,7 +17,7 @@ This guide walks you through deploying the app to production using four services
 Admin uploads PDF
        │
        ▼
-Netlify (Next.js website)
+Render (Next.js website)
   → saves PDF to Supabase Storage (inbox/ folder)
        │
        ▼
@@ -27,7 +27,7 @@ Railway (Python worker) — polls Supabase Storage every few seconds
   → moves PDF to processed/ in Supabase Storage
        │
        ▼
-Netlify (Next.js website) — reads articles from Supabase DB
+Render (Next.js website) — reads articles from Supabase DB
   → displays on website
 ```
 
@@ -44,11 +44,11 @@ You will need:
 
 ## Step 1 — Push Your Code to GitHub
 
-GitHub is where your code lives. Netlify and Railway will automatically pull from it whenever you push changes.
+GitHub is where your code lives. Render and Railway will automatically pull from it whenever you push changes.
 
 1. Go to [github.com](https://github.com) and create a free account if you don't have one
 2. Click the **+** icon in the top right → **New repository**
-3. Name it `hsa` (or anything you like)
+3. Name it `hfa` (or anything you like)
 4. Set it to **Private**
 5. Click **Create repository**
 6. GitHub will show you a page with commands. Open your terminal in the project folder and run:
@@ -58,13 +58,13 @@ git init
 git add .
 git commit -m "initial commit"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/hsa.git
+git remote add origin https://github.com/YOUR_USERNAME/hfa.git
 git push -u origin main
 ```
 
 Replace `YOUR_USERNAME` with your GitHub username.
 
-> **Check:** Go to `https://github.com/YOUR_USERNAME/hsa` in your browser. You should see all your project files listed there.
+> **Check:** Go to `https://github.com/YOUR_USERNAME/hfa` in your browser. You should see all your project files listed there.
 
 ---
 
@@ -78,7 +78,7 @@ Supabase stores all articles in a PostgreSQL database, and stores uploaded PDFs 
 2. Sign up with GitHub (easiest) or email
 3. Click **New project**
 4. Fill in:
-   - **Name**: `hsa` (or anything)
+   - **Name**: `hfa` (or anything)
    - **Database Password**: Generate a strong password and save it somewhere safe
    - **Region**: Pick the one closest to you geographically
 5. Click **Create new project** and wait 1–2 minutes for it to spin up
@@ -123,32 +123,34 @@ You need three values from Supabase. Keep a notepad open and write them down.
 
 ---
 
-## Step 3 — Deploy the Website to Netlify
+## Step 3 — Deploy the Website to Render
 
-Netlify hosts the Next.js website. It automatically redeploys whenever you push code to GitHub.
+Render hosts the Next.js website. It automatically redeploys whenever you push code to GitHub.
 
 ### 3.1 Create account
 
-1. Go to [netlify.com](https://netlify.com) and click **Sign Up**
+1. Go to [render.com](https://render.com) and click **Sign Up**
 2. Sign up with GitHub (strongly recommended — it links your repos automatically)
-3. When asked about plan type, select **"I'm working on personal projects" → Hobby (Free)**
 
-### 3.2 Import your project
+### 3.2 Create a new Web Service
 
-1. After signing in, click **Add new site** → **Import an existing project**
-2. Click **GitHub**
-3. Authorize Netlify to access your GitHub account if prompted
-4. Find your `hsa` repository in the list and click it
-5. On the configuration screen:
-   - **Branch to deploy**: `main`
-   - **Base directory**: `web`
-   - **Build command**: `npm run build`
-   - **Publish directory**: `web/.next`
+1. After signing in, click **New** → **Web Service**
+2. Connect your GitHub account if prompted
+3. Find your `hfa` repository in the list and click **Connect**
+4. On the configuration screen:
+   - **Name**: `hfa` (or anything you like)
+   - **Region**: Pick the one closest to you
+   - **Branch**: `main`
+   - **Root Directory**: `web`
+   - **Runtime**: `Node`
+   - **Build Command**: `npm install && npm run build`
+   - **Start Command**: `npm start`
+5. Select the **Free** plan
 6. **Do NOT click Deploy yet** — you need to add environment variables first
 
 ### 3.3 Add environment variables
 
-Still on the same screen, click **Add environment variables** and add each of these:
+Scroll down to **Environment Variables** and add each of these:
 
 | Name | Value |
 |---|---|
@@ -161,30 +163,21 @@ Still on the same screen, click **Add environment variables** and add each of th
 | `AUTH_SECRET` | Another strong random string (run `openssl rand -base64 32`) |
 | `WEBSITE_BASE_URL` | Leave blank for now — you'll fill this in after deployment |
 
-> To add each variable: type the name, paste the value, click **Add variable**.
-
 ### 3.4 Deploy
 
-1. Click **Deploy site**
-2. Wait 2–3 minutes — Netlify is installing packages and building the app
-3. When it shows a green **Published** status and a URL like `random-name.netlify.app`, your website is live
+1. Click **Create Web Service**
+2. Wait 3–5 minutes — Render is installing packages and building the app
+3. When it shows a green **Live** status and a URL like `your-app.onrender.com`, your website is live
 
-### 3.5 Set a custom site name (optional but recommended)
-
-1. Go to **Project configuration** → **General** → **Project details**
-2. Click **edit the Project name**
-3. Enter something like `hsa-newsletter` → Save
-4. Your site will now be at `hsa-newsletter.netlify.app`
-
-### 3.6 Add the website URL back to Netlify
+### 3.5 Add the website URL back to Render
 
 Now that you have the URL, add it as an environment variable:
 
-1. Go to **Project configuration** → **Environment variables**
-2. Find `WEBSITE_BASE_URL` and update it to your Netlify URL e.g. `https://hsa-newsletter.netlify.app`
-3. Go to **Deploys** → click **Trigger deploy** → **Deploy site**
+1. Go to your Render service → **Environment**
+2. Add `WEBSITE_BASE_URL` with your Render URL e.g. `https://hfa-hn9w.onrender.com`
+3. The service will automatically redeploy with the new variable
 
-> **Check:** Visit your Netlify URL in a browser. You should see the newspaper website. Visit `your-url.netlify.app/admin` — you should see a login page.
+> **Check:** Visit your Render URL in a browser. You should see the newspaper website. Visit `your-url.onrender.com/admin` — you should see a login page.
 
 ---
 
@@ -201,7 +194,7 @@ Railway runs the Python pipeline 24/7. When you drop a PDF into Supabase Storage
 
 1. Click **New Project**
 2. Click **Deploy from GitHub repo**
-3. Select your `hsa` repository
+3. Select your `hfa` repository
 4. Railway will ask what to deploy — click **Deploy Now** (we'll configure the start command next)
 
 ### 4.3 Configure the service
@@ -226,7 +219,7 @@ SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 LLM_API_KEY=your_gemini_api_key
 EMAIL_SENDER=your_gmail_address@gmail.com
 EMAIL_PASSWORD=your_gmail_app_password
-WEBSITE_BASE_URL=https://your-site.netlify.app
+WEBSITE_BASE_URL=https://your-site.onrender.com
 STORAGE_PROVIDER=supabase
 ```
 
@@ -262,11 +255,11 @@ storage:
 
 ## Step 5 — Test the Full Flow End to End
 
-1. Visit `https://your-site.netlify.app/admin` and log in with your `ADMIN_PASSWORD`
+1. Visit `https://your-site.onrender.com/admin` and log in with your `ADMIN_PASSWORD`
 2. Upload a newspaper PDF using the **Upload PDFs** section
 3. Go to Railway → your service → **Deploy** tab → click the latest deployment → view logs
 4. You should see the pipeline running: extracting articles, summarizing, sending email
-5. Once processing is done, visit `https://your-site.netlify.app` — the articles should appear
+5. Once processing is done, visit `https://your-site.onrender.com` — the articles should appear
 
 ---
 
@@ -280,11 +273,11 @@ email:
     - real_subscriber1@email.com
     - real_subscriber2@email.com
   title: "The American Express Times"
-  subscribe_url: "https://your-site.netlify.app/newsletter"
-  unsubscribe_url: "https://your-site.netlify.app/newsletter"
+  subscribe_url: "https://your-site.onrender.com/newsletter"
+  unsubscribe_url: "https://your-site.onrender.com/newsletter"
 
 website:
-  base_url: "https://your-site.netlify.app"
+  base_url: "https://your-site.onrender.com"
 ```
 
 Then commit and push:
@@ -295,7 +288,7 @@ git commit -m "update production config"
 git push
 ```
 
-Netlify and Railway will automatically redeploy with the new config.
+Render and Railway will automatically redeploy with the new config.
 
 ---
 
@@ -303,13 +296,13 @@ Netlify and Railway will automatically redeploy with the new config.
 
 If you have a domain name (e.g. `americanexpresstimes.com`):
 
-### On Netlify:
-1. Go to your Netlify site → **Domain management** → **Add a domain**
-2. Enter your domain and click **Verify**
-3. Netlify will show you DNS records to add — follow their instructions
+### On Render:
+1. Go to your Render service → **Settings** → **Custom Domains**
+2. Click **Add Custom Domain**
+3. Enter your domain and follow the DNS instructions Render provides
 
 ### Update environment variables after adding domain:
-1. In Netlify: update `WEBSITE_BASE_URL` to `https://yourdomain.com`
+1. In Render: update `WEBSITE_BASE_URL` to `https://yourdomain.com`
 2. In Railway: update `WEBSITE_BASE_URL` to `https://yourdomain.com`
 3. Redeploy both
 
@@ -317,7 +310,7 @@ If you have a domain name (e.g. `americanexpresstimes.com`):
 
 ## Environment Variable Reference
 
-### Netlify (Next.js website)
+### Render (Next.js website)
 
 | Variable | Description |
 |---|---|
@@ -328,7 +321,7 @@ If you have a domain name (e.g. `americanexpresstimes.com`):
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key (for client-side reads) |
 | `ADMIN_PASSWORD` | Admin panel login password (20+ random chars) |
 | `AUTH_SECRET` | Secret for signing session tokens (32+ random chars) |
-| `WEBSITE_BASE_URL` | Your Netlify URL or custom domain |
+| `WEBSITE_BASE_URL` | Your Render URL or custom domain |
 
 ### Railway (Python worker)
 
@@ -339,7 +332,7 @@ If you have a domain name (e.g. `americanexpresstimes.com`):
 | `LLM_API_KEY` | Gemini API key |
 | `EMAIL_SENDER` | Gmail address |
 | `EMAIL_PASSWORD` | Gmail App Password (16-char code) |
-| `WEBSITE_BASE_URL` | Your Netlify URL or custom domain |
+| `WEBSITE_BASE_URL` | Your Render URL or custom domain |
 | `STORAGE_PROVIDER` | Set to `supabase` |
 
 ---
@@ -353,7 +346,7 @@ The Python worker on Railway may still be processing. Check Railway logs — the
 You forgot to add that environment variable in Railway. Go to Variables tab, add it, then redeploy.
 
 ### Upload from admin panel returns "Failed to save file"
-Check that `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set in Netlify environment variables. Also confirm the `pdfs` storage bucket exists in Supabase (Step 2.3).
+Check that `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set in Render environment variables. Also confirm the `pdfs` storage bucket exists in Supabase (Step 2.3).
 
 ### Email is not being sent
 Check Railway logs for SMTP errors. Confirm `EMAIL_SENDER` and `EMAIL_PASSWORD` are correct. Remember `EMAIL_PASSWORD` must be a Gmail App Password, not your regular Gmail password.
@@ -367,6 +360,9 @@ Make sure you are using the **service role key** (not the anon key) for `SUPABAS
 ### Admin panel login blocked after a few attempts
 The login is rate-limited to 5 failed attempts per 15 minutes. Wait 15 minutes and try again with the correct password.
 
+### Render free tier cold starts
+On Render's free tier, the website may take 30–60 seconds to load after being idle. This is normal — the service spins down after 15 minutes of inactivity. Consider upgrading to a paid plan if this is an issue.
+
 ---
 
 ## Ongoing Operations
@@ -378,10 +374,10 @@ git add .
 git commit -m "describe your change"
 git push
 ```
-Netlify redeploys the website automatically. Railway redeploys the Python worker automatically.
+Render redeploys the website automatically. Railway redeploys the Python worker automatically.
 
 ### Viewing logs
-- **Website errors**: Netlify → your site → **Deploys** → click a deploy → **Deploy log**
+- **Website errors**: Render → your service → **Logs** tab
 - **Pipeline logs**: Railway → your service → click the active deployment
 
 ### Resending a failed digest email
