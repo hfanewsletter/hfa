@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import NewsletterModal from '@/components/newsletter/NewsletterModal'
 
 export default function Footer() {
   return (
@@ -37,12 +38,7 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold uppercase tracking-wider text-xs text-blue-300 mb-3">Subscribe</h4>
             <p className="text-blue-200 text-sm mb-3">Get the daily digest in your inbox.</p>
-            <Link
-              href="/newsletter"
-              className="inline-block bg-accent hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded transition-colors"
-            >
-              Newsletter Archive →
-            </Link>
+            <NewsletterModal />
           </div>
 
         </div>

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 
 @dataclass
@@ -140,3 +140,23 @@ class DBProvider(ABC):
     @abstractmethod
     def update_schedule_last_run(self, schedule_id: int) -> None:
         """Set last_run = now for the given schedule."""
+
+    # ------------------------------------------------------------------
+    # Subscribers
+    # ------------------------------------------------------------------
+
+    @abstractmethod
+    def get_subscribers(self) -> List[Tuple[str, str]]:
+        """Return all subscribers as (email, unsubscribe_token) tuples."""
+
+    @abstractmethod
+    def add_subscriber(self, email: str, unsubscribe_token: str) -> bool:
+        """Add a subscriber. Returns False if email already exists."""
+
+    @abstractmethod
+    def remove_subscriber_by_token(self, token: str) -> bool:
+        """Remove a subscriber by unsubscribe token. Returns True if found and deleted."""
+
+    def subscriber_exists(self, email: str) -> bool:
+        """Check if an email is already subscribed."""
+        return False

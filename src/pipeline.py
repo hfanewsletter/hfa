@@ -59,7 +59,7 @@ class Pipeline:
         self.rewriter = Rewriter(self.llm, config.rewriter.grouping_threshold)
         self.deduplicator = Deduplicator(self.db, config.dedup_threshold)
         self.summarizer = Summarizer(self.llm)
-        self.email_sender = EmailSender(config.email)
+        self.email_sender = EmailSender(config.email, db_provider=self.db)
         self.digest_store = DigestStore(self.db)
 
     def run(self, pdf_paths: Optional[List[str]] = None) -> None:

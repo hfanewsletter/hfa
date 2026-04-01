@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Article } from '@/lib/types'
 import ArticleCard from '@/components/article/ArticleCard'
+import NewsletterModal from '@/components/newsletter/NewsletterModal'
 
 interface SidebarProps {
   latest: Article[]
@@ -51,13 +52,7 @@ export default function Sidebar({ latest, categories }: SidebarProps) {
         <p className="text-blue-200 text-sm mb-4 leading-relaxed">
           Get a curated summary of the day&apos;s top stories delivered to your inbox every morning.
         </p>
-        <Link
-          href="/newsletter"
-          className="block text-center bg-accent hover:bg-red-700 text-white text-sm
-                     font-semibold py-2 rounded transition-colors"
-        >
-          View Newsletter Archive
-        </Link>
+        <NewsletterModal />
       </div>
 
     </aside>

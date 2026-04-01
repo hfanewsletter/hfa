@@ -3,6 +3,7 @@ import BreakingBanner from '@/components/home/BreakingBanner'
 import HeroStory from '@/components/home/HeroStory'
 import StoryGrid from '@/components/home/StoryGrid'
 import Sidebar from '@/components/home/Sidebar'
+import NewsletterModal from '@/components/newsletter/NewsletterModal'
 
 export const revalidate = 60
 
@@ -29,10 +30,11 @@ export default async function HomePage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-20 text-center">
         <h2 className="font-serif text-2xl font-bold text-primary mb-3">No articles for today</h2>
-        <p className="text-gray-500 text-sm">
+        <p className="text-gray-500 text-sm mb-6">
           Today&apos;s edition hasn&apos;t been processed yet. Check the{' '}
           <a href="/archive" className="underline text-primary">archive</a> for past articles.
         </p>
+        <NewsletterModal />
       </div>
     )
   }

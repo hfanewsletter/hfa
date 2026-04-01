@@ -24,8 +24,8 @@ email:
   title: "The American Express Times"
   newspaper_name: "The American Express Times"
   # Subscribe/unsubscribe page URLs — update these once the website is live
-  subscribe_url: "https://hfa-hn9w.onrender.com/newsletter"
-  unsubscribe_url: "https://hfa-hn9w.onrender.com/newsletter"
+  subscribe_url: "https://theamericanexpress.us/#newsletter-signup"
+  unsubscribe_url: "https://theamericanexpress.us/#newsletter-signup"
   # send_immediately: true sends email right after processing
   # Set to false for production and configure a cron schedule
   send_immediately: true

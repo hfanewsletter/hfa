@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
+from typing import Tuple
 from src.providers.db.base import ArticleRecord, DBProvider, PDFRecord, WeeklyEditionJob
 
 logger = logging.getLogger(__name__)
@@ -320,3 +321,43 @@ class SupabaseDBProvider(DBProvider):
         self.client.table("schedules").update({
             "last_run": datetime.now().isoformat(),
         }).eq("id", schedule_id).execute()
+
+    # ------------------------------------------------------------------
+    # Subscribers
+    # ------------------------------------------------------------------
+
+    def get_subscribers(self) -> List[Tuple[str, str]]:
+        response = self.client.table("subscribers").select("email, unsubscribe_token").execute()
+        return [(r["email"], r["unsubscribe_token"]) for r in (response.data or [])]
+
+    def add_subscriber(self, email: str, unsubscribe_token: str) -> bool:
+        try:
+            self.client.table("subscribers").insert({
+                "email": email,
+                "unsubscribe_token": unsubscribe_token,
+                "subscribed_at": datetime.now().isoformat(),
+            }).execute()
+            return True
+        except Exception as e:
+            if "duplicate" in str(e).lower() or "unique" in str(e).lower():
+                return False
+            raise
+
+    def remove_subscriber_by_token(self, token: str) -> bool:
+        response = (
+            self.client.table("subscribers")
+            .delete()
+            .eq("unsubscribe_token", token)
+            .execute()
+        )
+        return len(response.data or []) > 0
+
+    def subscriber_exists(self, email: str) -> bool:
+        response = (
+            self.client.table("subscribers")
+            .select("id")
+            .eq("email", email)
+            .limit(1)
+            .execute()
+        )
+        return len(response.data or []) > 0

@@ -111,6 +111,13 @@ class SQLiteDBProvider(DBProvider):
                 last_run   TEXT,
                 created_at TEXT    NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS subscribers (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                email             TEXT    UNIQUE NOT NULL,
+                unsubscribe_token TEXT    UNIQUE NOT NULL,
+                subscribed_at     TEXT    NOT NULL
+            );
         """)
         conn.commit()
         # Migrations: add new columns to existing tables idempotently
@@ -430,3 +437,46 @@ class SQLiteDBProvider(DBProvider):
             conn.commit()
         finally:
             conn.close()
+
+    # ------------------------------------------------------------------
+    # Subscribers
+    # ------------------------------------------------------------------
+
+    def get_subscribers(self):
+        conn = self._connect()
+        rows = conn.execute("SELECT email, unsubscribe_token FROM subscribers").fetchall()
+        conn.close()
+        return [(r["email"], r["unsubscribe_token"]) for r in rows]
+
+    def add_subscriber(self, email: str, unsubscribe_token: str) -> bool:
+        conn = self._connect()
+        try:
+            conn.execute(
+                "INSERT INTO subscribers (email, unsubscribe_token, subscribed_at) VALUES (?, ?, ?)",
+                (email, unsubscribe_token, datetime.now().isoformat()),
+            )
+            conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            return False
+        finally:
+            conn.close()
+
+    def remove_subscriber_by_token(self, token: str) -> bool:
+        conn = self._connect()
+        try:
+            cursor = conn.execute(
+                "DELETE FROM subscribers WHERE unsubscribe_token = ?", (token,)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+
+    def subscriber_exists(self, email: str) -> bool:
+        conn = self._connect()
+        row = conn.execute(
+            "SELECT 1 FROM subscribers WHERE email = ? LIMIT 1", (email,)
+        ).fetchone()
+        conn.close()
+        return row is not None

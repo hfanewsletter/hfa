@@ -52,7 +52,7 @@ All runtime behaviour is controlled by `config/config.yaml` plus environment var
 |---|---|
 | Switch LLM provider | `llm.provider` in config.yaml + update `LLM_API_KEY` in .env |
 | Switch storage backend | `STORAGE_PROVIDER` env var (`local` or `supabase`) |
-| Change subscribers | `email.subscribers` list in config.yaml |
+| Change subscribers | DB `subscribers` table (fallback: `email.subscribers` in config.yaml) |
 | Tune duplicate sensitivity | `deduplication.similarity_threshold` (0–1, default 0.85) |
 | Tune story-grouping sensitivity | `rewriter.grouping_threshold` (0–1, default 0.80) |
 | Production email schedule | `email.send_immediately: false` + set `email.schedule_cron` |
@@ -97,18 +97,20 @@ src/pipeline.py           orchestrates the full flow
   │    └─ data/articles.db    SQLite: articles, pdfs, digests, weekly_editions, schedules
   ├─ src/digest_store.py      saves digest record AFTER successful email delivery
   └─ src/email_sender.py      Resend API → renders templates/email_digest.html
-       │
+       │                        Per-recipient unsubscribe links (UUID tokens)
        ▼
 processed/ (local folder or Supabase Storage "pdfs/processed/")
 
 web/ (Next.js website — npm run dev)
-  ├─ /                     Homepage: hero story + featured grid + sidebar
+  ├─ /                     Homepage: hero story + featured grid + sidebar + newsletter form
   ├─ /article/:slug        Full rewritten article (no source PDFs shown to users)
   ├─ /section/:name        Articles by category
   ├─ /archive              Past editions by date
   ├─ /archive/:date        Edition page: hero + featured + sidebar (8 max) + full-width grid
   ├─ /newsletter           Email digest archive
-  └─ /admin                Upload PDFs, view status, manage weekly edition schedule
+  ├─ /admin                Upload PDFs, view status, manage weekly edition schedule
+  ├─ /api/subscribe        POST — add email to subscribers table (with spam filtering)
+  └─ /api/unsubscribe      GET ?token=... — remove subscriber and show confirmation page
 ```
 
 ## Provider abstractions
@@ -145,8 +147,9 @@ web/ (Next.js website — npm run dev)
 - `digests` — sent email digests: `batch_id`, `article_slugs`, `sent_at`. Only created after successful email delivery.
 - `weekly_editions` — generated PDF newspapers
 - `schedules` — cron schedules for weekly edition generation
+- `subscribers` — newsletter subscribers: `email` (unique), `unsubscribe_token` (UUID, unique), `subscribed_at`
 
-Schema: `scripts/supabase_schema.sql`
+Schema: `scripts/supabase_schema.sql` (migration: `scripts/add_subscribers_table.sql`)
 
 ## Pipeline safeguards
 
@@ -179,11 +182,20 @@ If all four fail, `published_at` defaults to today's date.
 - `"Times"` in the masthead is intentionally small/subtle (30% size, 60% opacity)
 - Edition page (`/archive/:date`): sidebar limited to 8 articles, remaining flow into full-width 3-column grid below
 
+## Subscriber management
+
+- Subscribers are stored in the `subscribers` DB table (Supabase in prod, SQLite locally)
+- **Subscribe flow**: Homepage sidebar has a "Join Newsletter" form → `POST /api/subscribe` → validates email, rejects disposable domains, rate-limits per IP (5/hour), honeypot field for bots → inserts with UUID unsubscribe token
+- **Unsubscribe flow**: Each email has a per-recipient unsubscribe link → `GET /api/unsubscribe?token=UUID` → immediately deletes subscriber from DB → shows confirmation page
+- **Fallback**: If no DB subscribers found, `email_sender.py` falls back to `email.subscribers` list in `config.yaml` (with no unsubscribe token)
+- **No double opt-in** — single opt-in with spam filtering (disposable domain blocklist + rate limiting + honeypot)
+
 ## Email digest
 
 - Template: `templates/email_digest.html` (Jinja2)
 - Logo loaded from `{{ website_base_url }}/logo.jpeg`
 - Variables passed: `articles`, `date`, `total_count`, `title`, `subscribe_url`, `unsubscribe_url`, `website_base_url`
+- `unsubscribe_url` is per-recipient (contains subscriber's UUID token)
 - Sends via Resend HTTP API (no SMTP). Requires `RESEND_API_KEY` env var.
 - `send_digest()` returns `True`/`False` — digest record only saved on success.
 

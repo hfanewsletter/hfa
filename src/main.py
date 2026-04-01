@@ -100,7 +100,7 @@ def main() -> None:
             sys.exit(1)
         unique = [a for a in articles if not a.is_duplicate]
         logger.info("Loaded %d unique articles from last digest.", len(unique))
-        EmailSender(config.email).send_digest(articles)
+        EmailSender(config.email, db_provider=db).send_digest(articles)
         logger.info("Done.")
         return
 
