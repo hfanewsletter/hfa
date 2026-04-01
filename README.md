@@ -167,6 +167,31 @@ email:
     - person2@example.com
 ```
 
+#### Why organic subscribers only — no bulk email imports
+
+It may be tempting to jumpstart the subscriber count by importing a purchased or scraped email list. **This will backfire and can permanently damage the product.** Here is why:
+
+**1. Resend will suspend the account.**
+Resend (our email provider) monitors bounce rates and spam complaint rates in real time. Purchased lists typically produce 5–15% bounces and 1–3% spam complaints. Resend's acceptable thresholds are under 2% bounces and under 0.1% complaints. A single bulk send to a cold list is enough to trigger an account review or immediate suspension — cutting off email delivery to *all* subscribers, including legitimate ones.
+
+**2. The domain reputation will be destroyed.**
+`theamericanexpress.us` is a new domain with no sending history. Gmail, Outlook, and Yahoo are especially suspicious of new domains sending bulk mail. If the first large send generates spam complaints, the domain gets flagged. Once that happens, even emails to people who genuinely signed up will land in spam. Rebuilding domain reputation takes months and is not guaranteed.
+
+**3. It violates anti-spam law.**
+The CAN-SPAM Act (US) requires prior consent for commercial email. GDPR (EU) is even stricter — explicit opt-in is mandatory, and fines reach up to 4% of annual revenue. Sending to people who never asked to hear from us is a legal liability.
+
+**4. The metrics will be misleading.**
+Cold list recipients open emails at 5–10% and click at under 1%. Organic subscribers open at 40–60% and click at 5–15%. A large cold list will dilute engagement metrics, making it impossible to tell whether the content is actually resonating with real readers. Worse, low engagement signals feed back into spam filtering — email providers see that most recipients ignore or delete the emails, and start routing future sends to spam for everyone.
+
+**5. What actually works for growth:**
+- **SEO** — every article is a public page indexed by Google. Quality content ranks and brings readers who then subscribe.
+- **Share buttons** — every article and homepage card has one-click sharing to X, Facebook, and WhatsApp. Readers share stories they care about, bringing in people with genuine interest.
+- **Word of mouth** — a daily digest that is consistently useful gets forwarded. One engaged subscriber who forwards to five colleagues is worth more than 1,000 cold contacts.
+- **Social media** — posting article links and digest summaries on relevant platforms drives targeted traffic.
+- **Cross-promotion** — partnering with complementary newsletters for subscriber swaps brings in pre-qualified readers.
+
+**The bottom line:** 100 organic subscribers who open every email will generate more traffic, more shares, and more long-term growth than 10,000 cold contacts who mark the email as spam. The infrastructure is built for scale — the subscriber base should be built on trust.
+
 #### Inbox folders
 ```yaml
 storage:
