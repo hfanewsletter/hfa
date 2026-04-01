@@ -217,8 +217,8 @@ Railway runs the Python pipeline 24/7. When you drop a PDF into Supabase Storage
 SUPABASE_URL=your_supabase_project_url
 SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 LLM_API_KEY=your_gemini_api_key
-EMAIL_SENDER=your_gmail_address@gmail.com
-EMAIL_PASSWORD=your_gmail_app_password
+EMAIL_SENDER=news@yourdomain.com
+RESEND_API_KEY=re_your_resend_api_key
 WEBSITE_BASE_URL=https://your-site.onrender.com
 STORAGE_PROVIDER=supabase
 ```
@@ -330,8 +330,8 @@ If you have a domain name (e.g. `americanexpresstimes.com`):
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | Service role key (for DB + Storage) |
 | `LLM_API_KEY` | Gemini API key |
-| `EMAIL_SENDER` | Gmail address |
-| `EMAIL_PASSWORD` | Gmail App Password (16-char code) |
+| `EMAIL_SENDER` | Resend sender address (e.g. `news@yourdomain.com`) |
+| `RESEND_API_KEY` | Resend API key (starts with `re_`) |
 | `WEBSITE_BASE_URL` | Your Render URL or custom domain |
 | `STORAGE_PROVIDER` | Set to `supabase` |
 
@@ -349,7 +349,7 @@ You forgot to add that environment variable in Railway. Go to Variables tab, add
 Check that `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set in Render environment variables. Also confirm the `pdfs` storage bucket exists in Supabase (Step 2.3).
 
 ### Email is not being sent
-Check Railway logs for SMTP errors. Confirm `EMAIL_SENDER` and `EMAIL_PASSWORD` are correct. Remember `EMAIL_PASSWORD` must be a Gmail App Password, not your regular Gmail password.
+Check Railway logs for Resend API errors. Confirm `EMAIL_SENDER` is an address on your verified Resend domain and `RESEND_API_KEY` is correct.
 
 ### Railway deployment fails with "No start command"
 Make sure **Start Command** is set to `python src/main.py` in Railway → Settings tab.

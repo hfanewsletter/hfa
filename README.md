@@ -36,17 +36,15 @@ Before running the app, gather credentials for two external services.
 
 > The free tier is sufficient for typical usage. If you see `429 Too Many Requests` errors, wait a few minutes or upgrade your plan.
 
-### 2. Gmail App Password (required — sends the digest email)
+### 2. Resend API Key (required — sends the digest email)
 
-Gmail blocks direct password login from code. You need a special 16-character App Password:
+Resend is used to send email digests via HTTP API (no SMTP).
 
-1. Go to [myaccount.google.com](https://myaccount.google.com) → **Security**
-2. Enable **2-Step Verification** if it is not already on
-3. Search for **"App passwords"** on the Security page
-4. Create a new App Password (select "Mail" + "Other") — copy the 16-character code
-5. Paste your Gmail address as `EMAIL_SENDER` and the 16-character code as `EMAIL_PASSWORD` in `.env`
-
-> **Do not use your regular Gmail password** — it will not work and may lock your account.
+1. Go to [resend.com](https://resend.com) and create an account
+2. Add and verify your domain under **Domains** (add the DNS records Resend provides)
+3. Go to **API Keys** → **Create API Key** (Sending access, select your domain)
+4. Copy the key — paste it into `.env` as `RESEND_API_KEY`
+5. Set `EMAIL_SENDER` in `.env` to an address on your verified domain (e.g. `news@yourdomain.com`)
 
 ### 3. System Software
 
@@ -127,8 +125,8 @@ The startup script creates this file from `.env.example` automatically. Open it 
 ```env
 # ── REQUIRED ─────────────────────────────────────────────────
 LLM_API_KEY=paste_your_gemini_api_key_here
-EMAIL_SENDER=your_gmail_address@gmail.com
-EMAIL_PASSWORD=your_16_char_gmail_app_password
+EMAIL_SENDER=news@yourdomain.com
+RESEND_API_KEY=re_your_resend_api_key_here
 
 # ── REQUIRED FOR PRODUCTION ───────────────────────────────────
 # Generate a strong password: openssl rand -base64 20
@@ -147,8 +145,8 @@ STORAGE_PROVIDER=local
 | Variable | Required | Description |
 |---|---|---|
 | `LLM_API_KEY` | **Yes** | Your Gemini API key from Google AI Studio |
-| `EMAIL_SENDER` | **Yes** | Gmail address the digest is sent from |
-| `EMAIL_PASSWORD` | **Yes** | Gmail App Password (16-char code, not your real password) |
+| `EMAIL_SENDER` | **Yes** | Sender address on your verified Resend domain (e.g. `news@yourdomain.com`) |
+| `RESEND_API_KEY` | **Yes** | Resend API key (starts with `re_`) |
 | `ADMIN_PASSWORD` | **Yes** | Password for `/admin`. Must be 20+ random characters in production. Generate with `openssl rand -base64 20` |
 | `WEBSITE_BASE_URL` | No | Base URL for "Read Full Article" links in the email. Defaults to `http://localhost:3000` |
 | `SUPABASE_URL` | Production only | Supabase project URL. Leave blank for local dev (SQLite is used automatically) |
@@ -357,7 +355,7 @@ pip install -r requirements.txt
 
 # 4. Copy and fill in credentials
 cp .env.example .env
-# Open .env and fill in LLM_API_KEY, EMAIL_SENDER, EMAIL_PASSWORD, ADMIN_PASSWORD
+# Open .env and fill in LLM_API_KEY, EMAIL_SENDER, RESEND_API_KEY, ADMIN_PASSWORD
 
 # 5. Create required folders
 mkdir -p inbox editorial_inbox processed logs data data/weekly_editions
@@ -396,9 +394,9 @@ The model name in `config/config.yaml` may be outdated. Try `gemini-2.5-flash-00
 You have hit the API rate limit. The pipeline retries automatically (up to 5 times with backoff up to 2 minutes). If it keeps failing, wait a few minutes and try again, or upgrade your Google AI plan.
 
 ### Email not sending
-- Confirm `EMAIL_PASSWORD` is a **Gmail App Password** (16-character code), not your regular Gmail password
-- Confirm 2-Step Verification is enabled on your Google account
-- Check `logs/app.log` for the exact SMTP error
+- Confirm `RESEND_API_KEY` is set and valid (starts with `re_`)
+- Confirm `EMAIL_SENDER` is an address on your verified Resend domain
+- Check `logs/app.log` for the exact error from Resend API
 
 ### PDF moved to `processed/` but no email received
 Check `logs/app.log`. Common causes:
@@ -455,7 +453,7 @@ src/pipeline.py             orchestrates the full flow
   ├─ src/summarizer.py           LLM → 4-5 sentence email summary per article
   ├─ src/providers/db/           SQLite (local) or Supabase (production)
   ├─ src/digest_store.py         saves digest batch for --resend-last
-  └─ src/email_sender.py         Gmail SMTP → templates/email_digest.html (Jinja2)
+  └─ src/email_sender.py         Resend API → templates/email_digest.html (Jinja2)
        │
        ▼
 processed/                  ← PDFs moved here after processing
@@ -480,6 +478,20 @@ src/newspaper_generator.py  Jinja2 + WeasyPrint → data/weekly_editions/edition
 | PDF pipeline worker | Python process | Railway |
 | Database | SQLite (`data/articles.db`) | Supabase PostgreSQL |
 | File storage | Local `inbox/` / `processed/` | Supabase Storage |
+| Email delivery | Resend API | Resend API |
+| Domain | localhost | theamericanexpress.us (GoDaddy) |
+
+### Production costs
+
+| Service | Plan | Cost | What it does |
+|---|---|---|---|
+| **Render** | Starter | $7/month | Hosts the Next.js website (always-on, no cold starts) |
+| **Railway** | Hobby | ~$5/month | Runs the Python pipeline worker 24/7 |
+| **Supabase** | Pro | $25/month | PostgreSQL database + PDF file storage (5 GB upload limit) |
+| **Resend** | Pro | $20/month | Email delivery (50K emails/month included, overage ~$1.50/1K) |
+| **GoDaddy** | — | ~$12/year | Domain registration (theamericanexpress.us) |
+| **Google AI Studio** | Free/Pay-as-you-go | Free tier available | Gemini API for article extraction + embeddings |
+| | | **~$57/month** | **Total estimated monthly cost** |
 
 ### Production setup
 
@@ -489,13 +501,12 @@ src/newspaper_generator.py  Jinja2 + WeasyPrint → data/weekly_editions/edition
 | Variable | Value |
 |---|---|
 | `LLM_API_KEY` | Gemini API key |
-| `EMAIL_SENDER` | Gmail address |
-| `EMAIL_PASSWORD` | Gmail App Password |
+| `EMAIL_SENDER` | Resend sender address (e.g. `news@theamericanexpress.us`) |
+| `RESEND_API_KEY` | Resend API key (starts with `re_`) |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | Supabase **service role** key (not the anon key) |
 | `STORAGE_PROVIDER` | `supabase` |
-| `WEBSITE_BASE_URL` | Your production domain (e.g. `https://yoursite.onrender.com`) |
-| `ADMIN_PASSWORD` | Strong random password |
+| `WEBSITE_BASE_URL` | Your production domain (e.g. `https://theamericanexpress.us`) |
 
 3. Set `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_PASSWORD`, and `AUTH_SECRET` in Render environment variables for the web frontend
 
