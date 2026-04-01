@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# start.sh — Start the full HSA Newspaper app on localhost
+# start.sh — Start the full HFA Newspaper app on localhost
 #
 # What this does:
 #   1. Checks prerequisites (Python 3, Node, npm)
@@ -34,7 +34,7 @@ cd "$SCRIPT_DIR"
 
 echo ""
 echo -e "${BOLD}================================================${RESET}"
-echo -e "${BOLD}   HSA Newspaper — Local Dev Startup${RESET}"
+echo -e "${BOLD}   HFA Newspaper — Local Dev Startup${RESET}"
 echo -e "${BOLD}================================================${RESET}"
 echo ""
 
@@ -75,8 +75,8 @@ if [ ! -f ".env" ]; then
     echo -e "${YELLOW}  ┌─────────────────────────────────────────────────────┐${RESET}"
     echo -e "${YELLOW}  │  ACTION REQUIRED: open .env and fill in:            │${RESET}"
     echo -e "${YELLOW}  │    LLM_API_KEY   — your Gemini API key               │${RESET}"
-    echo -e "${YELLOW}  │    EMAIL_SENDER  — your Gmail address                │${RESET}"
-    echo -e "${YELLOW}  │    EMAIL_PASSWORD — your Gmail App Password          │${RESET}"
+    echo -e "${YELLOW}  │    EMAIL_SENDER  — sender address on your Resend domain│${RESET}"
+    echo -e "${YELLOW}  │    RESEND_API_KEY — your Resend API key              │${RESET}"
     echo -e "${YELLOW}  └─────────────────────────────────────────────────────┘${RESET}"
     echo ""
     read -rp "  Press Enter to continue anyway, or Ctrl+C to edit .env first... "
@@ -130,10 +130,10 @@ else
 fi
 
 # ── 5. Required folders ───────────────────────────────────────
-for dir in inbox processed logs data data/weekly_editions; do
+for dir in inbox editorial_inbox processed logs data data/weekly_editions; do
     mkdir -p "$dir"
 done
-success "Required folders ready (inbox/, processed/, logs/, data/)"
+success "Required folders ready (inbox/, editorial_inbox/, processed/, logs/, data/)"
 
 # ── 6. Start Python worker ────────────────────────────────────
 echo ""

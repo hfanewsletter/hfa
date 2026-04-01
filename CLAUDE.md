@@ -67,7 +67,7 @@ All runtime behaviour is controlled by `config/config.yaml` plus environment var
 | `SUPABASE_SERVICE_KEY` | Service role key (bypasses RLS, used by both DB and Storage providers) |
 | `LLM_API_KEY` | Gemini API key |
 | `STORAGE_PROVIDER` | Must be `supabase` (defaults to `local` from config.yaml) |
-| `WEBSITE_BASE_URL` | Render URL, e.g. `https://hfa-hn9w.onrender.com` (no trailing slash) |
+| `WEBSITE_BASE_URL` | Production URL, e.g. `https://theamericanexpress.us` (no trailing slash) |
 | `EMAIL_SENDER` | Resend sender address (e.g. `news@theamericanexpress.us`) |
 | `RESEND_API_KEY` | Resend API key (starts with `re_`) |
 
@@ -102,7 +102,7 @@ src/pipeline.py           orchestrates the full flow
 processed/ (local folder or Supabase Storage "pdfs/processed/")
 
 web/ (Next.js website — npm run dev)
-  ├─ /                     Homepage: hero story + featured grid + sidebar + newsletter form
+  ├─ /                     Homepage: hero story + featured grid + sidebar
   ├─ /article/:slug        Full rewritten article (no source PDFs shown to users)
   ├─ /section/:name        Articles by category
   ├─ /archive              Past editions by date
@@ -181,12 +181,12 @@ If all four fail, `published_at` defaults to today's date.
 - Category-specific colours defined in `web/src/lib/utils.ts`
 - `"Times"` in the masthead is intentionally small/subtle (30% size, 60% opacity)
 - Edition page (`/archive/:date`): sidebar limited to 8 articles, remaining flow into full-width 3-column grid below
-- **Share buttons** on article pages: X, Facebook, WhatsApp, copy link — URL-based sharing, no SDKs or tracking
+- **Share buttons** on article pages and homepage cards: X, Facebook, WhatsApp, copy link — URL-based sharing, no SDKs or tracking
 
 ## Subscriber management
 
 - Subscribers are stored in the `subscribers` DB table (Supabase in prod, SQLite locally)
-- **Subscribe flow**: Homepage sidebar has a "Join Newsletter" form → `POST /api/subscribe` → validates email, rejects disposable domains, rate-limits per IP (5/hour), honeypot field for bots → inserts with UUID unsubscribe token
+- **Subscribe flow**: "Join Newsletter" button in nav bar opens modal → `POST /api/subscribe` → validates email, rejects disposable domains, rate-limits per IP (5/hour), honeypot field for bots → inserts with UUID unsubscribe token
 - **Unsubscribe flow**: Each email has a per-recipient unsubscribe link → `GET /api/unsubscribe?token=UUID` → immediately deletes subscriber from DB → shows confirmation page
 - **Fallback**: If no DB subscribers found, `email_sender.py` falls back to `email.subscribers` list in `config.yaml` (with no unsubscribe token)
 - **No double opt-in** — single opt-in with spam filtering (disposable domain blocklist + rate limiting + honeypot)

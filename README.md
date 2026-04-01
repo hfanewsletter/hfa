@@ -91,14 +91,14 @@ Once you have the prerequisites above, starting the entire app is a single comma
 **Mac / Linux:**
 ```bash
 git clone https://github.com/hfanewsletter/hfa.git
-cd hsa
+cd hfa
 ./start.sh
 ```
 
 **Windows:**
 ```cmd
 git clone https://github.com/hfanewsletter/hfa.git
-cd hsa
+cd hfa
 start.bat
 ```
 
@@ -155,14 +155,17 @@ STORAGE_PROVIDER=local
 
 ### Required — `config/config.yaml` (application settings)
 
-#### Subscriber list
+#### Subscribers
+
+Subscribers are managed via the database `subscribers` table. Users can self-subscribe using the "Join Newsletter" button on the website, and each email includes a one-click unsubscribe link.
+
+As a fallback (if no DB subscribers exist), the config.yaml list is used:
 ```yaml
 email:
   subscribers:
     - person1@example.com
     - person2@example.com
 ```
-Every address here receives the digest email after each batch is processed.
 
 #### Inbox folders
 ```yaml
@@ -195,11 +198,11 @@ If a PDF's publication date is older than this many days, its articles are still
 ## Folder Structure
 
 ```
-hsa/
+hfa/
 ├── start.sh                  ← Mac/Linux: run this to start everything
 ├── start.bat                 ← Windows: run this to start everything
 ├── inbox/                    ← DROP NEWSPAPER PDFs HERE
-├── editorial_inbox/          ← DROP EDITORIAL PDFs HERE
+├── editorial_inbox/          ← DROP EDITORIAL/OPINION PDFs HERE
 ├── processed/                ← Processed PDFs moved here automatically
 ├── logs/
 │   └── app.log               ← Full processing log
@@ -210,10 +213,10 @@ hsa/
 │   └── config.yaml           ← Main settings (subscribers, thresholds, inboxes)
 ├── web/                      ← Next.js website source
 ├── src/                      ← Python pipeline source code
-├── web/                      ← Next.js website
 ├── templates/                ← Email HTML template (Jinja2)
 ├── scripts/
-│   └── supabase_schema.sql   ← Run in Supabase SQL editor for production setup
+│   ├── supabase_schema.sql          ← Run in Supabase SQL editor for production setup
+│   └── add_subscribers_table.sql    ← Migration: add subscribers table to existing DBs
 ├── .env                      ← Your credentials (never commit this file)
 ├── .env.example              ← Credential template (safe to share)
 └── requirements.txt          ← Python dependencies
@@ -299,6 +302,8 @@ Editorial articles are excluded from the homepage scoring and appear only on `/e
 | `/archive/2026-03-23` | A specific past edition in full homepage layout |
 | `/newsletter` | Archive of all sent email digests |
 | `/admin` | Admin panel (password protected) |
+| `/api/subscribe` | POST — subscribe email to newsletter (with spam filtering) |
+| `/api/unsubscribe` | GET `?token=UUID` — unsubscribe and show confirmation page |
 
 ### Admin Panel
 
@@ -343,7 +348,7 @@ This loads the last saved digest from the database and resends — no PDF reproc
 ```bash
 # 1. Clone and enter the project
 git clone https://github.com/hfanewsletter/hfa.git
-cd hsa
+cd hfa
 
 # 2. Create and activate a Python virtual environment
 python3 -m venv venv

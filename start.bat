@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 :: ============================================================
-:: start.bat — Start the full HSA Newspaper app on localhost
+:: start.bat — Start the full HFA Newspaper app on localhost
 ::
 :: What this does:
 ::   1. Checks prerequisites (Python, Node, npm)
@@ -19,7 +19,7 @@ cd /d "%~dp0"
 
 echo.
 echo ================================================
-echo    HSA Newspaper -- Local Dev Startup
+echo    HFA Newspaper -- Local Dev Startup
 echo ================================================
 echo.
 
@@ -62,8 +62,8 @@ if not exist ".env" (
     echo   +---------------------------------------------------------+
     echo   ^|  ACTION REQUIRED: open .env in a text editor and fill:  ^|
     echo   ^|    LLM_API_KEY    -- your Gemini API key                ^|
-    echo   ^|    EMAIL_SENDER   -- your Gmail address                  ^|
-    echo   ^|    EMAIL_PASSWORD -- your Gmail App Password             ^|
+    echo   ^|    EMAIL_SENDER   -- sender on your Resend domain         ^|
+    echo   ^|    RESEND_API_KEY -- your Resend API key                ^|
     echo   +---------------------------------------------------------+
     echo.
     pause
@@ -122,6 +122,7 @@ if not exist "web\node_modules\" (
 
 :: ── 5. Required folders ───────────────────────────────────────
 if not exist "inbox\"              mkdir inbox
+if not exist "editorial_inbox\"    mkdir editorial_inbox
 if not exist "processed\"          mkdir processed
 if not exist "logs\"               mkdir logs
 if not exist "data\"               mkdir data
@@ -131,7 +132,7 @@ echo [OK]   Required folders ready
 :: ── 6. Start Python worker in a new window ────────────────────
 echo.
 echo [INFO] Starting Python pipeline worker in a new window...
-start "HSA Python Worker" cmd /k "cd /d %~dp0 && call venv\Scripts\activate.bat && python src\main.py --process-existing"
+start "HFA Python Worker" cmd /k "cd /d %~dp0 && call venv\Scripts\activate.bat && python src\main.py --process-existing"
 echo [OK]   Python worker window opened
 
 :: Brief pause so the worker window has time to initialise
