@@ -3,6 +3,14 @@ import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import { isAuthenticated } from '@/lib/auth'
 
+function sanitizeFilename(name: string): string {
+  return name
+    .normalize('NFKD')
+    .replace(/[^\w\s.\-()]/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^\-+|\-+$/g, '')
+}
+
 export async function POST(req: NextRequest) {
   if (!(await isAuthenticated())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -16,6 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
+  const safeName = sanitizeFilename(file.name)
 
   try {
     if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
@@ -27,7 +36,7 @@ export async function POST(req: NextRequest) {
       )
       const { error } = await supabase.storage
         .from('pdfs')
-        .upload(`editorial_inbox/${file.name}`, buffer, {
+        .upload(`editorial_inbox/${safeName}`, buffer, {
           contentType: 'application/pdf',
           upsert: true,
         })
@@ -38,12 +47,12 @@ export async function POST(req: NextRequest) {
         ? path.resolve(process.env.EDITORIAL_INBOX_PATH)
         : path.join(process.cwd(), '..', 'editorial_inbox')
       await mkdir(editorialInboxPath, { recursive: true })
-      await writeFile(path.join(editorialInboxPath, file.name), buffer)
+      await writeFile(path.join(editorialInboxPath, safeName), buffer)
     }
 
     return NextResponse.json({
       ok: true,
-      filename: file.name,
+      filename: safeName,
       message: 'Queued for editorial processing',
     })
   } catch (err) {
