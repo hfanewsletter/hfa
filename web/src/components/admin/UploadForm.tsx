@@ -11,7 +11,7 @@ export default function UploadForm({
   onUploadDone,
   uploadUrl = '/api/admin/upload',
   folder = 'inbox',
-  title = 'Upload PDFs',
+  title = 'Upload Newspaper PDFs',
   description = 'Drop one or more newspaper PDFs. The pipeline will extract, group, and rewrite all articles automatically.',
 }: {
   onUploadDone?: () => void
