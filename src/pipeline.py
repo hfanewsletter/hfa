@@ -111,8 +111,9 @@ class Pipeline:
         stale_pdf_paths: Set[str] = set()          # PDFs too old to include in email
         failed_pdfs: Set[str] = set()              # PDFs that failed extraction
 
-        for pdf_path in pdf_paths:
+        for pdf_idx, pdf_path in enumerate(pdf_paths, 1):
             filename = os.path.basename(pdf_path)
+            logger.info("=== Processing PDF %d/%d: '%s' ===", pdf_idx, len(pdf_paths), filename)
             pdf_record_id = None
             try:
                 pdf_bytes = self.storage.read_file(pdf_path)
@@ -195,8 +196,10 @@ class Pipeline:
         # --- Stage 3-7: Per-group: dedup → rewrite → summarize → save ---
         processed: List[ProcessedArticle] = []
 
-        for group_articles, group_embedding in groups:
+        for group_idx, (group_articles, group_embedding) in enumerate(groups, 1):
             primary = group_articles[0]
+            logger.info("--- Processing story %d/%d: '%s' (%d source(s)) ---",
+                        group_idx, len(groups), primary.title[:60], len(group_articles))
 
             try:
                 # Cross-run duplicate check (embedding of primary article)

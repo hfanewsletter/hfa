@@ -1,5 +1,6 @@
 import logging
 import re
+import concurrent.futures
 from datetime import datetime
 from typing import List, Tuple
 
@@ -8,6 +9,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from src.models import Article
 from src.providers.llm.base import LLMProvider
+
+EMBEDDING_CONCURRENT = 5  # Parallel embedding API calls
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +55,29 @@ class Rewriter:
         if not articles:
             return []
 
-        logger.info("Generating embeddings for %d articles to group by story...", len(articles))
-        embeddings: List[List[float]] = []
-        for article in articles:
-            embed_text = f"{article.title}\n\n{article.content[:2000]}"
-            embeddings.append(self.llm.get_embedding(embed_text))
+        logger.info("Generating embeddings for %d articles to group by story (%d parallel)...",
+                     len(articles), EMBEDDING_CONCURRENT)
+        embed_texts = [f"{a.title}\n\n{a.content[:2000]}" for a in articles]
+        embeddings: List[List[float]] = [None] * len(articles)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=EMBEDDING_CONCURRENT) as executor:
+            future_to_idx = {
+                executor.submit(self.llm.get_embedding, text): i
+                for i, text in enumerate(embed_texts)
+            }
+            for future in concurrent.futures.as_completed(future_to_idx):
+                idx = future_to_idx[future]
+                try:
+                    embeddings[idx] = future.result()
+                except Exception as e:
+                    logger.error("Embedding failed for article '%s': %s", articles[idx].title, e)
+                    embeddings[idx] = []
+
+        # Remove articles with failed embeddings
+        valid = [(a, e) for a, e in zip(articles, embeddings) if e]
+        if len(valid) < len(articles):
+            logger.warning("Dropped %d articles with failed embeddings", len(articles) - len(valid))
+        articles, embeddings = ([v[0] for v in valid], [v[1] for v in valid]) if valid else ([], [])
 
         assigned = [False] * len(articles)
         groups: List[Tuple[List[Article], List[float]]] = []
