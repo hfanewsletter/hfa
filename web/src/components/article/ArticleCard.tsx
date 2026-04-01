@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Article } from '@/lib/types'
 import { formatShortDate, truncate } from '@/lib/utils'
+import ShareRow from '@/components/article/ShareRow'
 
 interface Props {
   article: Article
@@ -52,7 +53,10 @@ export default function ArticleCard({ article, variant = 'grid' }: Props) {
           {truncate(article.summary, 25)}
         </p>
 
-        <p className="text-xs text-gray-400 mt-3">{formatShortDate(article.published_at)}</p>
+        <div className="flex items-center justify-between mt-3">
+          <span className="text-xs text-gray-400">{formatShortDate(article.published_at)}</span>
+          <ShareRow title={article.title} slug={article.slug} />
+        </div>
       </div>
     </Link>
   )

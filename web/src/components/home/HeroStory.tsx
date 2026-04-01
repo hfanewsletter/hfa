@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Article } from '@/lib/types'
 import { formatShortDate, truncate } from '@/lib/utils'
+import ShareRow from '@/components/article/ShareRow'
 
 export default function HeroStory({ article }: { article: Article }) {
   return (
@@ -31,7 +32,10 @@ export default function HeroStory({ article }: { article: Article }) {
 
           {/* Footer */}
           <div className="flex items-center justify-between pt-4 border-t border-gray-100 text-xs text-gray-400">
-            <span>{formatShortDate(article.published_at)}</span>
+            <div className="flex items-center gap-3">
+              <span>{formatShortDate(article.published_at)}</span>
+              <ShareRow title={article.title} slug={article.slug} />
+            </div>
             <span className="font-semibold text-accent group-hover:underline underline-offset-2 transition-colors">
               Read full story →
             </span>

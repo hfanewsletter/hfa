@@ -1,14 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 interface ShareButtonsProps {
   title: string
-  url: string
+  slug: string
 }
 
-export default function ShareButtons({ title, url }: ShareButtonsProps) {
+export default function ShareButtons({ title, slug }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false)
+
+  const url = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}/article/${slug}`
+    }
+    return `/article/${slug}`
+  }, [slug])
 
   const encodedTitle = encodeURIComponent(title)
   const encodedUrl = encodeURIComponent(url)

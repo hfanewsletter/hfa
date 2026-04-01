@@ -61,10 +61,7 @@ export default async function ArticlePage({ params }: Props) {
 
             <div className="flex items-center justify-between pb-5 mb-6 border-b border-gray-200">
               <span className="text-xs text-gray-400">{formatDate(article.published_at)}</span>
-              <ShareButtons
-                title={article.title}
-                url={`${process.env.WEBSITE_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/article/${slug}`}
-              />
+              <ShareButtons title={article.title} slug={slug} />
             </div>
 
             {/* Summary callout */}
