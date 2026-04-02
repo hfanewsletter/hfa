@@ -170,7 +170,8 @@ If all four fail, `published_at` defaults to today's date.
 
 ## Homepage date logic
 
-- Homepage only shows articles where `DATE(published_at) = today`
+- Homepage only shows articles where `published_at` date = **today in America/New_York (EST/EDT)**
+- "Today" is computed via `getDateEST()` in `web/src/lib/utils.ts` using `Intl.DateTimeFormat` — never UTC, because UTC would archive articles 5 hours early for EST users (e.g. at 7 PM EST)
 - Old newspapers (past dates) are saved to DB but appear only in the `/archive` section
 - If `processing.max_newspaper_age_days > 0`, articles from papers older than that threshold are archived-only AND excluded from the email digest
 
