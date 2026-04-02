@@ -7,7 +7,7 @@ from src.providers.llm.base import LLMProvider
 
 logger = logging.getLogger(__name__)
 
-SUMMARIZE_CONCURRENT = 5  # Parallel summarization API calls
+SUMMARIZE_CONCURRENT = 3  # Parallel summarization API calls
 
 
 class Summarizer:

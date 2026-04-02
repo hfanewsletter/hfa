@@ -10,7 +10,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from src.models import Article
 from src.providers.llm.base import LLMProvider
 
-EMBEDDING_CONCURRENT = 5  # Parallel embedding API calls
+EMBEDDING_CONCURRENT = 3  # Parallel embedding API calls
 
 logger = logging.getLogger(__name__)
 
