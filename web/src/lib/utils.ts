@@ -57,6 +57,24 @@ export function formatShortDate(iso: string): string {
   })
 }
 
+/**
+ * Returns the current date in America/New_York as 'YYYY-MM-DD'.
+ * Use this instead of new Date().toISOString().slice(0,10) which returns UTC
+ * and causes articles to archive 5 hours early for EST users.
+ * offsetDays=1 returns tomorrow's date in EST, etc.
+ */
+export function getDateEST(offsetDays = 0): string {
+  const base = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date())
+  if (offsetDays === 0) return base
+  const [y, m, d] = base.split('-').map(Number)
+  const shifted = new Date(y, m - 1, d + offsetDays)
+  return [
+    shifted.getFullYear(),
+    String(shifted.getMonth() + 1).padStart(2, '0'),
+    String(shifted.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
 export function truncate(text: string, maxWords: number): string {
   const words = text.split(' ')
   if (words.length <= maxWords) return text

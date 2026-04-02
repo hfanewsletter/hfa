@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { DBAdapter, Edition } from './index'
 import type { Article, PDFRecord, Schedule, WeeklyEdition, HomepageData } from '@/lib/types'
+import { getDateEST } from '@/lib/utils'
 
 function rowToArticle(row: Record<string, unknown>): Article {
   const sp = row.source_pdfs
@@ -101,8 +102,8 @@ export class SupabaseAdapter implements DBAdapter {
   }
 
   async getHomepageData(): Promise<HomepageData> {
-    const today = new Date().toISOString().slice(0, 10) // 'YYYY-MM-DD'
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+    const today    = getDateEST()     // 'YYYY-MM-DD' in America/New_York
+    const tomorrow = getDateEST(1)
     const [articlesRes, catsRes] = await Promise.all([
       this.client.from('articles').select('*')
         .neq('category', 'Editorial')
@@ -265,8 +266,8 @@ export class SupabaseAdapter implements DBAdapter {
   }
 
   async hasEditorialsToday(): Promise<boolean> {
-    const today = new Date().toISOString().slice(0, 10)
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+    const today    = getDateEST()
+    const tomorrow = getDateEST(1)
     const { count } = await this.client
       .from('articles')
       .select('id', { count: 'exact', head: true })

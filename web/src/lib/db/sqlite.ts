@@ -8,6 +8,7 @@
 import path from 'path'
 import type { DBAdapter, Edition } from './index'
 import type { Article, PDFRecord, Schedule, WeeklyEdition, HomepageData } from '@/lib/types'
+import { getDateEST } from '@/lib/utils'
 
 function openDB() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -129,7 +130,7 @@ export class SQLiteAdapter implements DBAdapter {
   async getHomepageData(): Promise<HomepageData> {
     const db = openDB()
 
-    const today = new Date().toISOString().slice(0, 10) // 'YYYY-MM-DD'
+    const today = getDateEST() // 'YYYY-MM-DD' in America/New_York
     const latest = db.prepare(
       `SELECT * FROM articles WHERE DATE(published_at) = ? AND category != 'Editorial' ORDER BY importance_score DESC, published_at DESC LIMIT 12`
     ).all(today) as Record<string, unknown>[]
@@ -330,7 +331,7 @@ export class SQLiteAdapter implements DBAdapter {
 
   async hasEditorialsToday(): Promise<boolean> {
     const db = openDB()
-    const today = new Date().toISOString().slice(0, 10)
+    const today = getDateEST() // America/New_York
     const row = db.prepare(
       `SELECT COUNT(*) as count FROM articles WHERE category = 'Editorial' AND DATE(published_at) = ?`
     ).get(today) as { count: number }
