@@ -55,6 +55,7 @@ All runtime behaviour is controlled by `config/config.yaml` plus environment var
 | Change subscribers | DB `subscribers` table (fallback: `email.subscribers` in config.yaml) |
 | Tune duplicate sensitivity | `deduplication.similarity_threshold` (0–1, default 0.85) |
 | Tune story-grouping sensitivity | `rewriter.grouping_threshold` (0–1, default 0.80) |
+| Tune API concurrency | `llm.max_concurrent` in config.yaml (default 3 for Tier 1; increase to 5–10 on Tier 2) |
 | Production email schedule | `email.send_immediately: false` + set `email.schedule_cron` |
 | Max age of newspaper to include in email | `processing.max_newspaper_age_days` (0 = disabled) |
 | Website URL | `WEBSITE_BASE_URL` in .env (used in article links + email logo) |
@@ -118,10 +119,10 @@ web/ (Next.js website — npm run dev)
 **LLM providers** (`src/providers/llm/`):
 - `base.py` — `LLMProvider` ABC: `extract_articles()`, `get_embedding()`, `rewrite_articles()`, `summarize()`, `extract_newspaper_date()`
 - `gemini.py` — active implementation (`gemini-2.5-flash` + `gemini-embedding-001`)
-  - `MAX_CONCURRENT = 3` (parallel API calls — kept low to avoid 503 overload)
+  - Concurrency controlled via `llm.max_concurrent` in `config.yaml` (default 3 — keep low on Tier 1 to avoid 503s)
   - `MAX_RETRIES = 5`, backoff `[5, 15, 30, 60, 120]`s
   - Articles with titles starting "Untitled" are filtered out
-- `__init__.py` — `get_llm_provider(name, api_key, model, embedding_model)` factory
+- `__init__.py` — `get_llm_provider(name, api_key, model, embedding_model, max_concurrent)` factory
 
 **Storage providers** (`src/providers/storage/`):
 - `base.py` — `StorageProvider` ABC: `list_new_files()`, `list_editorial_files()`, `read_file()`, `move_to_processed()`, `get_file_url()`
