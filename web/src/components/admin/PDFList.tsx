@@ -10,61 +10,60 @@ const STATUS_STYLES: Record<string, string> = {
   failed:     'bg-red-100    text-red-600',
 }
 
-// Visual stages shown while a PDF is being worked on
-const PROCESSING_STAGES = [
-  'Extracting articles…',
-  'Grouping same stories…',
-  'Rewriting content…',
-  'Saving to database…',
-  'Finalising…',
-]
+const STALE_MINUTES = 20
+const FAST_POLL_MS  = 5_000   // while actively processing
+const SLOW_POLL_MS  = 30_000  // after stalling — keep checking until resolved
 
-function ProcessingBar({ filename }: { filename: string }) {
-  const [stage, setStage] = useState(0)
-  const [width, setWidth] = useState(8)
+function formatDuration(ms: number): string {
+  const totalSecs = Math.floor(ms / 1000)
+  const mins = Math.floor(totalSecs / 60)
+  const secs = totalSecs % 60
+  if (mins === 0) return `${secs}s`
+  return `${mins}m ${secs}s`
+}
 
+/** Live elapsed-time counter. Resets when `startedAt` changes. */
+function ElapsedTimer({ startedAt }: { startedAt: string }) {
+  const [elapsed, setElapsed] = useState(Date.now() - new Date(startedAt).getTime())
   useEffect(() => {
-    // Advance through stages once — stop at the last one
-    const interval = setInterval(() => {
-      setStage(s => {
-        if (s >= PROCESSING_STAGES.length - 1) return s  // stay at last stage
-        return s + 1
-      })
-      setWidth(w => Math.min(w + Math.floor(Math.random() * 12 + 6), 90))
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [])
+    const id = setInterval(() => setElapsed(Date.now() - new Date(startedAt).getTime()), 1000)
+    return () => clearInterval(id)
+  }, [startedAt])
+  return <>{formatDuration(elapsed)}</>
+}
 
+function ActiveRow({ pdf }: { pdf: PDFRecord }) {
+  const isStale = (Date.now() - new Date(pdf.uploaded_at).getTime()) > STALE_MINUTES * 60 * 1000
   return (
-    <div className="mt-2">
-      <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-        <span className="font-medium truncate max-w-[70%]">{filename}</span>
-        <span className="text-blue-600 font-medium">{PROCESSING_STAGES[stage]}</span>
+    <div className="flex items-center justify-between py-2">
+      <div className="flex items-center gap-2 min-w-0">
+        {isStale ? (
+          <span className="shrink-0 w-2 h-2 rounded-full bg-yellow-400" />
+        ) : (
+          <span className="shrink-0 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+        )}
+        <span className="text-sm text-gray-700 truncate">{pdf.filename}</span>
       </div>
-      <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-        <div
-          className="h-1.5 rounded-full bg-blue-500 transition-all duration-1000"
-          style={{ width: `${width}%` }}
-        />
-      </div>
+      <span className="text-xs text-gray-400 shrink-0 ml-4 tabular-nums">
+        <ElapsedTimer startedAt={pdf.uploaded_at} />
+      </span>
     </div>
   )
 }
 
 const PAGE_SIZE = 5
 
-const STALE_MINUTES = 20
-
 export default function PDFList({ refreshTrigger }: { refreshTrigger?: number }) {
-  const [pdfs, setPdfs] = useState<PDFRecord[]>([])
+  const [pdfs, setPdfs]       = useState<PDFRecord[]>([])
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const [stalled, setStalled] = useState(false)
+  const [page, setPage]       = useState(1)
   const [dismissing, setDismissing] = useState(false)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const fastPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const slowPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  function isStale(uploadedAt: string) {
-    return (Date.now() - new Date(uploadedAt).getTime()) > STALE_MINUTES * 60 * 1000
+  function clearPolls() {
+    if (fastPollRef.current) { clearInterval(fastPollRef.current); fastPollRef.current = null }
+    if (slowPollRef.current) { clearInterval(slowPollRef.current); slowPollRef.current = null }
   }
 
   function fetchPdfs(showLoading = false) {
@@ -76,20 +75,21 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
         setPdfs(list)
         setLoading(false)
 
-        const activeList = list.filter(p => p.status === 'pending' || p.status === 'processing')
-        const hasActive = activeList.length > 0
-        // Stop polling if all active PDFs are older than STALE_MINUTES
-        const allStale = hasActive && activeList.every(p => isStale(p.uploaded_at))
+        const active = list.filter(p => p.status === 'pending' || p.status === 'processing')
+        const hasActive = active.length > 0
+        const allStale  = hasActive && active.every(
+          p => (Date.now() - new Date(p.uploaded_at).getTime()) > STALE_MINUTES * 60 * 1000
+        )
 
-        if (allStale) {
-          setStalled(true)
-          if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
-        } else if (hasActive && !pollRef.current) {
-          setStalled(false)
-          pollRef.current = setInterval(() => fetchPdfs(), 3000)
-        } else if (!hasActive && pollRef.current) {
-          clearInterval(pollRef.current)
-          pollRef.current = null
+        clearPolls()
+        if (!hasActive) {
+          // Nothing in flight — no polling needed
+        } else if (allStale) {
+          // Stalled: keep a slow poll so we catch eventual completion
+          slowPollRef.current = setInterval(() => fetchPdfs(), SLOW_POLL_MS)
+        } else {
+          // Active: fast poll
+          fastPollRef.current = setInterval(() => fetchPdfs(), FAST_POLL_MS)
         }
       })
       .catch(() => setLoading(false))
@@ -103,24 +103,19 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ filenames }),
     })
-    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+    clearPolls()
     setDismissing(false)
     fetchPdfs()
   }
 
-  // Fetch on mount and whenever the refresh trigger fires
   useEffect(() => {
-    setStalled(false)
     fetchPdfs(true)
     setPage(1)
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
+    return clearPolls
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger])
 
-  // Deduplicate: pipeline may insert a second record when it starts.
-  // Keep the latest record per filename (highest uploaded_at).
+  // Deduplicate: keep the latest record per filename
   const deduped = Object.values(
     pdfs.reduce<Record<string, PDFRecord>>((acc, p) => {
       const prev = acc[p.filename]
@@ -130,52 +125,59 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
   ).sort((a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
 
   const activePdfs = deduped.filter(p => p.status === 'pending' || p.status === 'processing')
+  const hasStale   = activePdfs.some(
+    p => (Date.now() - new Date(p.uploaded_at).getTime()) > STALE_MINUTES * 60 * 1000
+  )
 
-  const totalPages = Math.max(1, Math.ceil(deduped.length / PAGE_SIZE))
+  const totalPages  = Math.max(1, Math.ceil(deduped.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
-  const paginated = deduped.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+  const paginated   = deduped.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   return (
     <div className="space-y-4">
 
-      {/* Active processing banner */}
+      {/* Active processing panel */}
       {activePdfs.length > 0 && (
-        <div className={`bg-white rounded border px-5 py-4 ${stalled ? 'border-yellow-300' : 'border-blue-200'}`}>
-          <div className="flex items-center gap-2 mb-3">
-            {stalled ? (
-              <span className="text-yellow-500 font-bold text-base shrink-0">⚠</span>
-            ) : (
-              <svg className="animate-spin h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-            )}
-            <span className={`text-sm font-semibold ${stalled ? 'text-yellow-700' : 'text-blue-700'}`}>
-              {stalled
-                ? `${activePdfs.length} PDF${activePdfs.length > 1 ? 's' : ''} taking longer than expected`
-                : `Processing ${activePdfs.length} PDF${activePdfs.length > 1 ? 's' : ''}`}
-            </span>
-            <button
-              onClick={handleDismiss}
-              disabled={dismissing}
-              className="ml-auto text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-              title="Mark these PDFs as failed and dismiss"
-            >
-              {dismissing ? 'Dismissing…' : 'Dismiss ✕'}
-            </button>
+        <div className={`bg-white rounded border px-5 py-4 ${hasStale ? 'border-yellow-300' : 'border-blue-200'}`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              {hasStale ? (
+                <span className="text-yellow-500 text-sm">⚠</span>
+              ) : (
+                <svg className="animate-spin h-3.5 w-3.5 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+              )}
+              <span className={`text-sm font-semibold ${hasStale ? 'text-yellow-700' : 'text-blue-700'}`}>
+                {hasStale
+                  ? `${activePdfs.length} PDF${activePdfs.length > 1 ? 's' : ''} still processing`
+                  : `Processing ${activePdfs.length} PDF${activePdfs.length > 1 ? 's' : ''}…`}
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-xs text-gray-400">Elapsed</span>
+              <button
+                onClick={handleDismiss}
+                disabled={dismissing}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                title="Mark these PDFs as failed and dismiss"
+              >
+                {dismissing ? 'Dismissing…' : 'Dismiss ✕'}
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="divide-y divide-gray-100">
             {activePdfs.map(pdf => (
-              <ProcessingBar key={pdf.id ?? pdf.filename} filename={pdf.filename} />
+              <ActiveRow key={pdf.id ?? pdf.filename} pdf={pdf} />
             ))}
           </div>
 
           <p className="text-xs text-gray-400 mt-3">
-            {stalled
-              ? `Still showing as pending after ${STALE_MINUTES} min. Check Railway logs to confirm the worker is running.`
-              : 'The Python worker is running in the background. This page updates automatically.'}
+            {hasStale
+              ? 'Taking longer than usual — still checking every 30 seconds. Check Railway logs if this persists.'
+              : 'Updating automatically every 5 seconds.'}
           </p>
         </div>
       )}
@@ -194,39 +196,47 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
         ) : (
           <>
             <div className="divide-y divide-gray-100">
-              {paginated.map(pdf => (
-                <div key={pdf.id ?? pdf.filename} className="px-5 py-4 flex items-center gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{pdf.filename}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Uploaded {formatShortDate(pdf.uploaded_at)}
-                      {pdf.processed_at && ` · Processed ${formatShortDate(pdf.processed_at)}`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    {pdf.article_count > 0 && (
-                      <span className="text-xs text-gray-500 font-medium">
-                        {pdf.article_count} article{pdf.article_count !== 1 ? 's' : ''}
-                      </span>
-                    )}
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded capitalize
-                      ${STATUS_STYLES[pdf.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                      {pdf.status === 'processing' ? (
-                        <span className="flex items-center gap-1">
-                          <svg className="animate-spin h-2.5 w-2.5" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                          </svg>
-                          processing
+              {paginated.map(pdf => {
+                // Compute processing duration for display
+                let durationLabel: string | null = null
+                if (pdf.status === 'processed' && pdf.processed_at && pdf.uploaded_at) {
+                  const ms = new Date(pdf.processed_at).getTime() - new Date(pdf.uploaded_at).getTime()
+                  if (ms > 0) durationLabel = formatDuration(ms)
+                }
+
+                return (
+                  <div key={pdf.id ?? pdf.filename} className="px-5 py-4 flex items-center gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{pdf.filename}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Uploaded {formatShortDate(pdf.uploaded_at)}
+                        {durationLabel && (
+                          <> · <span className="text-gray-500">Processed in {durationLabel}</span></>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {pdf.article_count > 0 && (
+                        <span className="text-xs text-gray-500 font-medium">
+                          {pdf.article_count} article{pdf.article_count !== 1 ? 's' : ''}
                         </span>
-                      ) : pdf.status}
-                    </span>
+                      )}
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded capitalize
+                        ${STATUS_STYLES[pdf.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {pdf.status === 'processing' ? (
+                          <span className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse inline-block" />
+                            processing
+                          </span>
+                        ) : pdf.status}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
-            {/* Pagination controls */}
+            {/* Pagination */}
             {totalPages > 1 && (
               <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-xs text-gray-400">
