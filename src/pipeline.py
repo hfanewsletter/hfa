@@ -44,6 +44,7 @@ class Pipeline:
             api_key=config.llm.api_key,
             model=config.llm.model,
             embedding_model=config.llm.embedding_model,
+            max_concurrent=config.llm.max_concurrent,
         )
         self.storage = get_storage_provider(
             provider_name=config.storage.provider,
@@ -56,9 +57,9 @@ class Pipeline:
 
         self.extractor = ArticleExtractor(self.llm)
         self.pdf_processor = PDFProcessor()
-        self.rewriter = Rewriter(self.llm, config.rewriter.grouping_threshold)
+        self.rewriter = Rewriter(self.llm, config.rewriter.grouping_threshold, max_concurrent=config.llm.max_concurrent)
         self.deduplicator = Deduplicator(self.db, config.dedup_threshold)
-        self.summarizer = Summarizer(self.llm)
+        self.summarizer = Summarizer(self.llm, max_concurrent=config.llm.max_concurrent)
         self.email_sender = EmailSender(config.email, db_provider=self.db)
         self.digest_store = DigestStore(self.db)
 

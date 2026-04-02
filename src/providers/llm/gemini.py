@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 TEXT_CHUNK_SIZE = 4   # Pages per API call for text PDFs
 IMAGE_CHUNK_SIZE = 2  # Pages per API call for image PDFs (larger payloads)
-MAX_CONCURRENT = 3    # Parallel Gemini API calls (kept low to avoid 503 rate-limit retries)
 REQUEST_TIMEOUT = 90  # Seconds before a single API call is considered hung
 MAX_RETRIES = 5       # Retry attempts per chunk on transient failures
 RETRY_BACKOFF = [5, 15, 30, 60, 120]  # Seconds to wait between retries
@@ -23,13 +22,14 @@ RETRY_BACKOFF = [5, 15, 30, 60, 120]  # Seconds to wait between retries
 
 class GeminiProvider(LLMProvider):
 
-    def __init__(self, api_key: str, model: str = "gemini-2.5-flash", embedding_model: str = "gemini-embedding-001"):
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash", embedding_model: str = "gemini-embedding-001", max_concurrent: int = 3):
         self.client = genai.Client(
             api_key=api_key,
             http_options=types.HttpOptions(timeout=REQUEST_TIMEOUT * 1000),  # milliseconds
         )
         self.model_name = model
         self.embedding_model = embedding_model
+        self.max_concurrent = max_concurrent
 
     def _call_with_retry(self, contents) -> str:
         """
@@ -86,11 +86,11 @@ class GeminiProvider(LLMProvider):
         chunks = [pages[i:i + TEXT_CHUNK_SIZE] for i in range(0, total_pages, TEXT_CHUNK_SIZE)]
         logger.info(
             "Extracting text PDF: %d pages → %d chunks, up to %d parallel",
-            total_pages, len(chunks), MAX_CONCURRENT,
+            total_pages, len(chunks), self.max_concurrent,
         )
         results: List[Optional[List[Article]]] = [None] * len(chunks)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_concurrent) as executor:
             future_to_idx = {
                 executor.submit(self._text_chunk_worker, chunk, total_pages, source_pdf): i
                 for i, chunk in enumerate(chunks)
@@ -150,11 +150,11 @@ NEWSPAPER CONTENT:
         chunks = [pages[i:i + IMAGE_CHUNK_SIZE] for i in range(0, total_pages, IMAGE_CHUNK_SIZE)]
         logger.info(
             "Extracting image PDF: %d pages → %d chunks, up to %d parallel",
-            total_pages, len(chunks), MAX_CONCURRENT,
+            total_pages, len(chunks), self.max_concurrent,
         )
         results: List[Optional[List[Article]]] = [None] * len(chunks)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_CONCURRENT) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_concurrent) as executor:
             future_to_idx = {
                 executor.submit(self._image_chunk_worker, chunk, total_pages, source_pdf): i
                 for i, chunk in enumerate(chunks)

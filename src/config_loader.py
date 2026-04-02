@@ -23,6 +23,7 @@ class LLMConfig:
     model: str            # e.g. "gemini-2.5-flash" — used for extraction & summarization
     embedding_model: str  # e.g. "gemini-embedding-exp-03-07" — used for deduplication
     api_key: str          # from env: LLM_API_KEY
+    max_concurrent: int = 3  # parallel API calls (3 for Tier 1, 5-10 for Tier 2)
 
 
 @dataclass
@@ -76,6 +77,7 @@ def load_config(config_path: str = "config/config.yaml") -> AppConfig:
             model=os.getenv("LLM_MODEL", llm_cfg["model"]),
             embedding_model=os.getenv("LLM_EMBEDDING_MODEL", llm_cfg.get("embedding_model", "gemini-embedding-001")),
             api_key=os.getenv("LLM_API_KEY", ""),
+            max_concurrent=int(llm_cfg.get("max_concurrent", 3)),
         ),
         storage=StorageConfig(
             provider=os.getenv("STORAGE_PROVIDER", storage_cfg["provider"]),

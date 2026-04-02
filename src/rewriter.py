@@ -10,7 +10,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from src.models import Article
 from src.providers.llm.base import LLMProvider
 
-EMBEDDING_CONCURRENT = 3  # Parallel embedding API calls
+_EMBEDDING_CONCURRENT_DEFAULT = 3  # Fallback if not set via config
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,10 @@ class Rewriter:
     2. rewrite()         — calls the LLM to produce one article per group
     """
 
-    def __init__(self, llm_provider: LLMProvider, grouping_threshold: float = 0.80):
+    def __init__(self, llm_provider: LLMProvider, grouping_threshold: float = 0.80, max_concurrent: int = _EMBEDDING_CONCURRENT_DEFAULT):
         self.llm = llm_provider
         self.grouping_threshold = grouping_threshold
+        self.max_concurrent = max_concurrent
 
     def group_by_story(
         self, articles: List[Article]
@@ -56,11 +57,11 @@ class Rewriter:
             return []
 
         logger.info("Generating embeddings for %d articles to group by story (%d parallel)...",
-                     len(articles), EMBEDDING_CONCURRENT)
+                     len(articles), self.max_concurrent)
         embed_texts = [f"{a.title}\n\n{a.content[:2000]}" for a in articles]
         embeddings: List[List[float]] = [None] * len(articles)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=EMBEDDING_CONCURRENT) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_concurrent) as executor:
             future_to_idx = {
                 executor.submit(self.llm.get_embedding, text): i
                 for i, text in enumerate(embed_texts)

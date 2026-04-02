@@ -7,7 +7,7 @@ from src.providers.llm.base import LLMProvider
 
 logger = logging.getLogger(__name__)
 
-SUMMARIZE_CONCURRENT = 3  # Parallel summarization API calls
+_SUMMARIZE_CONCURRENT_DEFAULT = 3  # Fallback if not set via config
 
 
 class Summarizer:
@@ -16,8 +16,9 @@ class Summarizer:
     Skips duplicate articles to avoid unnecessary API calls.
     """
 
-    def __init__(self, llm_provider: LLMProvider):
+    def __init__(self, llm_provider: LLMProvider, max_concurrent: int = _SUMMARIZE_CONCURRENT_DEFAULT):
         self.llm = llm_provider
+        self.max_concurrent = max_concurrent
 
     def summarize_all(self, processed_articles: List[ProcessedArticle]) -> List[ProcessedArticle]:
         """
@@ -28,7 +29,7 @@ class Summarizer:
         logger.info(
             "Summarizing %d unique articles (%d parallel, skipping %d duplicates)",
             len(unique),
-            SUMMARIZE_CONCURRENT,
+            self.max_concurrent,
             len(processed_articles) - len(unique),
         )
 
@@ -42,7 +43,7 @@ class Summarizer:
                 )
                 pa.summary = pa.rewritten_content[:500].rsplit(" ", 1)[0] + "..."
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=SUMMARIZE_CONCURRENT) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_concurrent) as executor:
             futures = [executor.submit(_summarize_one, pa) for pa in unique]
             concurrent.futures.wait(futures)
 
