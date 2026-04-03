@@ -309,17 +309,17 @@ Write only the article body, nothing else.
         return None
 
     def summarize(self, rewritten_content: str) -> str:
-        prompt = f"""Summarize the following news article in exactly 4 to 5 sentences for an email newsletter.
+        prompt = f"""Write a 2-sentence summary of the following news article for an email newsletter.
 
-IMPORTANT INSTRUCTIONS:
-- Write entirely in your own words. Do NOT copy any phrases or sentences from the original.
-- Cover the essential facts: who, what, when, where, and why/how.
-- Be concise and factual.
-- Do not start with phrases like "This article..." or "The article discusses..."
+RULES:
+- Sentence 1: the core fact (who did what, or what happened).
+- Sentence 2: the significance or key detail (why it matters, what happens next).
+- Write in your own words — do NOT copy phrases from the original.
+- Be specific and factual. No filler phrases like "This article..." or "In a significant development...".
 
 ARTICLE:
 {rewritten_content}
 
-Write only the summary, nothing else.
+Write only the 2-sentence summary, nothing else.
 """
         return self._call_with_retry(prompt).strip()
