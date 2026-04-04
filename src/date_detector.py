@@ -66,9 +66,9 @@ def _parse_filename_date(filename: str) -> Optional[date]:
     """
     stem = filename.rsplit('.', 1)[0]
 
-    # "23 March 2026" or "23 March, 2026"
+    # "23 March 2026", "23 March, 2026", "23 March- 2026"
     m = re.search(
-        rf'(\d{{1,2}})\s+({MONTH_PATTERN})[,\s]+(\d{{4}})',
+        rf'(\d{{1,2}})\s+({MONTH_PATTERN})[\s,\-]+(\d{{4}})',
         stem, re.IGNORECASE
     )
     if m:
@@ -76,9 +76,9 @@ def _parse_filename_date(filename: str) -> Optional[date]:
         if d:
             return d
 
-    # "March 23 2026" or "March 23, 2026"
+    # "March 23 2026", "March 23, 2026", "March 23- 2026", "April 04- 2026"
     m = re.search(
-        rf'({MONTH_PATTERN})\s+(\d{{1,2}})[,\s]+(\d{{4}})',
+        rf'({MONTH_PATTERN})\s+(\d{{1,2}})[\s,\-]+(\d{{4}})',
         stem, re.IGNORECASE
     )
     if m:
