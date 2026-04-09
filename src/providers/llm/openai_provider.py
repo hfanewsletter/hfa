@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 TEXT_CHUNK_SIZE = 4   # Pages per API call for text PDFs
 IMAGE_CHUNK_SIZE = 2  # Pages per API call for image PDFs
 MAX_RETRIES = 7
-RETRY_BACKOFF = [5, 15, 30, 60, 120, 180, 240]
+RETRY_BACKOFF       = [5,  15, 30, 60, 120, 180, 240]  # General errors
+RATELIMIT_BACKOFF   = [15, 30, 60, 90, 120, 180, 240]  # TPM/RPM rate limits (need longer initial wait)
 
 
 class OpenAIProvider(LLMProvider):
@@ -44,7 +45,7 @@ class OpenAIProvider(LLMProvider):
                     raise ValueError("OpenAI returned empty response")
                 return text
             except RateLimitError as e:
-                wait = RETRY_BACKOFF[min(attempt, len(RETRY_BACKOFF) - 1)]
+                wait = RATELIMIT_BACKOFF[min(attempt, len(RATELIMIT_BACKOFF) - 1)]
                 logger.warning(
                     "OpenAI rate limit (attempt %d/%d): %s. Retrying in %ds...",
                     attempt + 1, MAX_RETRIES, e, wait,
