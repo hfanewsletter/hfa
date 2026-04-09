@@ -339,6 +339,13 @@ export class SQLiteAdapter implements DBAdapter {
     return row.count
   }
 
+  async getSubscriberCount(): Promise<number> {
+    const db = openDB()
+    const row = db.prepare('SELECT COUNT(*) as count FROM subscribers').get() as { count: number }
+    db.close()
+    return row.count
+  }
+
   async getEditorialArticles(date: string): Promise<Article[]> {
     const db = openDB()
     const rows = db.prepare(

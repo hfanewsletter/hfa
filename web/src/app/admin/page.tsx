@@ -14,10 +14,12 @@ export default async function AdminPage() {
   }
   let articleCount = 0
   let pdfCount = 0
+  let subscriberCount = 0
   try {
-    ;[articleCount, pdfCount] = await Promise.all([
+    ;[articleCount, pdfCount, subscriberCount] = await Promise.all([
       getDB().getTotalArticleCount(),
       getDB().getProcessedPDFCount(),
+      getDB().getSubscriberCount(),
     ])
   } catch { /* DB not initialised yet */ }
 
@@ -36,10 +38,11 @@ export default async function AdminPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Total Articles', value: articleCount },
           { label: 'PDFs Processed', value: pdfCount },
+          { label: 'Subscribers', value: subscriberCount },
           { label: 'Website', value: <Link href="/" className="text-primary hover:underline text-sm">View →</Link> },
         ].map(stat => (
           <div key={stat.label} className="bg-white rounded border border-gray-200 p-4">

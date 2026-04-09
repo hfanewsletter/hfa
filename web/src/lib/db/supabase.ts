@@ -280,6 +280,13 @@ export class SupabaseAdapter implements DBAdapter {
     return new Set((data ?? []).map((r: { filename: string }) => r.filename)).size
   }
 
+  async getSubscriberCount(): Promise<number> {
+    const { count } = await this.client
+      .from('subscribers')
+      .select('id', { count: 'exact', head: true })
+    return count ?? 0
+  }
+
   async getEditorialArticles(date: string): Promise<Article[]> {
     const { data } = await this.client
       .from('articles')

@@ -30,6 +30,7 @@ export interface DBAdapter {
   hasEditorialsToday(): Promise<boolean>
   getTotalArticleCount(): Promise<number>
   getProcessedPDFCount(): Promise<number>
+  getSubscriberCount(): Promise<number>
 }
 
 let _adapter: DBAdapter | null = null
