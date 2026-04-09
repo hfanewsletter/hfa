@@ -14,13 +14,13 @@
 #   max_concurrent: 3   (15 RPM Tier 1 — prone to 503 overload errors)
 llm:
   provider: openai
-  model: gpt-4o
+  model: gpt-4.1-mini        # 200k TPM / 500 RPM — best balance of speed, accuracy, cost
   embedding_model: text-embedding-3-small
   # Concurrency: parallel API calls per stage (extraction, embedding, summarization).
-  # OpenAI Tier 1 (30k TPM): keep at 2 to avoid token-rate-limit errors.
-  # OpenAI Tier 2 (450k TPM, after spending $50): can safely increase to 5.
-  # Gemini Tier 1 (15 RPM): keep at 3.
-  max_concurrent: 2
+  # gpt-4.1-mini Tier 1: 200k TPM → safe at 5 concurrent.
+  # gpt-4o Tier 1: 30k TPM → keep at 2.
+  # Gemini Tier 1: 15 RPM → keep at 3.
+  max_concurrent: 5
 
 # Storage Configuration
 # To switch to cloud storage, change 'provider' and add relevant credentials to .env

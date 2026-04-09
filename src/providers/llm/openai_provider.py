@@ -20,7 +20,7 @@ RATELIMIT_BACKOFF   = [15, 30, 60, 90, 120, 180, 240]  # TPM/RPM rate limits (ne
 
 class OpenAIProvider(LLMProvider):
 
-    def __init__(self, api_key: str, model: str = "gpt-4o", embedding_model: str = "text-embedding-3-small", max_concurrent: int = 5):
+    def __init__(self, api_key: str, model: str = "gpt-4.1-mini", embedding_model: str = "text-embedding-3-small", max_concurrent: int = 5):
         try:
             from openai import OpenAI
         except ImportError:

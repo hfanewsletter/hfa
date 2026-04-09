@@ -82,13 +82,23 @@ class SupabaseDBProvider(DBProvider):
         if not rows:
             return None
 
-        stored_vecs = np.array([json.loads(r["embedding_json"]) for r in rows])
+        # Only compare against stored embeddings with the same dimension.
+        # Mismatches happen when switching embedding providers (e.g. Gemini 3072-dim
+        # vs OpenAI 1536-dim). Cross-model comparison is meaningless anyway.
+        query_dim = len(embedding)
+        compatible = [(r, json.loads(r["embedding_json"])) for r in rows
+                      if len(json.loads(r["embedding_json"])) == query_dim]
+        if not compatible:
+            return None
+
+        compatible_rows, compatible_vecs = zip(*compatible)
+        stored_vecs = np.array(compatible_vecs)
         query_vec = np.array(embedding).reshape(1, -1)
         sims = cosine_similarity(query_vec, stored_vecs)[0]
         max_idx = int(np.argmax(sims))
 
         if float(sims[max_idx]) >= threshold:
-            return rows[max_idx]["title"]
+            return compatible_rows[max_idx]["title"]
         return None
 
     def get_article(self, slug: str) -> Optional[ArticleRecord]:
