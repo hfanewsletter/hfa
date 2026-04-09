@@ -108,6 +108,14 @@ def main() -> None:
     logger.info("LLM provider: %s (%s)", config.llm.provider, config.llm.model)
     logger.info("Storage provider: %s", config.storage.provider)
 
+    # Clean up any PDFs left stuck in 'processing' from a previous crashed/restarted run
+    try:
+        stuck = db.cleanup_stuck_processing()
+        if stuck:
+            logger.warning("Cleaned up %d PDF record(s) stuck in 'processing' from a previous run", stuck)
+    except Exception as e:
+        logger.warning("Could not clean up stuck PDF records: %s", e)
+
     if args.run_once or args.process_existing:
         pipeline = Pipeline(config)
         pipeline.run()  # Process all existing inbox files

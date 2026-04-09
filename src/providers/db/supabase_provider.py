@@ -382,3 +382,15 @@ class SupabaseDBProvider(DBProvider):
             .execute()
         )
         return len(response.data or []) > 0
+
+    def cleanup_stuck_processing(self, max_age_hours: int = 2) -> int:
+        from datetime import timedelta
+        cutoff = (datetime.now() - timedelta(hours=max_age_hours)).isoformat()
+        response = (
+            self.client.table("pdfs")
+            .update({"status": "failed"})
+            .eq("status", "processing")
+            .lt("uploaded_at", cutoff)
+            .execute()
+        )
+        return len(response.data or [])

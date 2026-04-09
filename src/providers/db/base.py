@@ -160,3 +160,11 @@ class DBProvider(ABC):
     def subscriber_exists(self, email: str) -> bool:
         """Check if an email is already subscribed."""
         return False
+
+    def cleanup_stuck_processing(self, max_age_hours: int = 2) -> int:
+        """
+        Mark any PDFs stuck in 'processing' for longer than max_age_hours as 'failed'.
+        Called at startup to clean up records left over from crashed/restarted pipeline runs.
+        Returns the number of records updated.
+        """
+        return 0

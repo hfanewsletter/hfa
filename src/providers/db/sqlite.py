@@ -496,3 +496,17 @@ class SQLiteDBProvider(DBProvider):
         ).fetchone()
         conn.close()
         return row is not None
+
+    def cleanup_stuck_processing(self, max_age_hours: int = 2) -> int:
+        from datetime import timedelta
+        cutoff = (datetime.now() - timedelta(hours=max_age_hours)).isoformat()
+        conn = self._connect()
+        try:
+            cursor = conn.execute(
+                "UPDATE pdfs SET status = 'failed' WHERE status = 'processing' AND uploaded_at < ?",
+                (cutoff,),
+            )
+            conn.commit()
+            return cursor.rowcount
+        finally:
+            conn.close()

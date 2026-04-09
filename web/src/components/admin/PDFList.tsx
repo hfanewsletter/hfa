@@ -32,8 +32,21 @@ function ElapsedTimer({ startedAt }: { startedAt: string }) {
   return <>{formatDuration(elapsed)}</>
 }
 
-function ActiveRow({ pdf }: { pdf: PDFRecord }) {
+function ActiveRow({ pdf, onReset }: { pdf: PDFRecord; onReset: () => void }) {
   const isStale = (Date.now() - new Date(pdf.uploaded_at).getTime()) > STALE_MINUTES * 60 * 1000
+  const [resetting, setResetting] = useState(false)
+
+  async function handleReset() {
+    setResetting(true)
+    await fetch('/api/admin/pdfs/dismiss', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filenames: [pdf.filename] }),
+    })
+    setResetting(false)
+    onReset()
+  }
+
   return (
     <div className="flex items-center justify-between py-2">
       <div className="flex items-center gap-2 min-w-0">
@@ -44,9 +57,19 @@ function ActiveRow({ pdf }: { pdf: PDFRecord }) {
         )}
         <span className="text-sm text-gray-700 truncate">{pdf.filename}</span>
       </div>
-      <span className="text-xs text-gray-400 shrink-0 ml-4 tabular-nums">
-        <ElapsedTimer startedAt={pdf.uploaded_at} />
-      </span>
+      <div className="flex items-center gap-3 shrink-0 ml-4">
+        <span className="text-xs text-gray-400 tabular-nums">
+          <ElapsedTimer startedAt={pdf.uploaded_at} />
+        </span>
+        <button
+          onClick={handleReset}
+          disabled={resetting}
+          title="Mark as failed and remove from this list"
+          className="text-gray-300 hover:text-red-400 transition-colors disabled:opacity-40 text-sm leading-none"
+        >
+          {resetting ? '…' : '✕'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -161,22 +184,22 @@ export default function PDFList({ refreshTrigger }: { refreshTrigger?: number })
                 onClick={handleDismiss}
                 disabled={dismissing}
                 className="text-xs text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                title="Mark these PDFs as failed and dismiss"
+                title="Mark all stuck PDFs as failed"
               >
-                {dismissing ? 'Dismissing…' : 'Dismiss ✕'}
+                {dismissing ? 'Clearing…' : 'Clear All ✕'}
               </button>
             </div>
           </div>
 
           <div className="divide-y divide-gray-100">
             {activePdfs.map(pdf => (
-              <ActiveRow key={pdf.id ?? pdf.filename} pdf={pdf} />
+              <ActiveRow key={pdf.id ?? pdf.filename} pdf={pdf} onReset={fetchPdfs} />
             ))}
           </div>
 
           <p className="text-xs text-gray-400 mt-3">
             {hasStale
-              ? 'Taking longer than usual — still checking every 30 seconds. Check Railway logs if this persists.'
+              ? 'These appear to be stuck — the pipeline may have restarted. Use ✕ to clear individual items or "Clear All ✕" to reset all.'
               : 'Updating automatically every 5 seconds.'}
           </p>
         </div>
