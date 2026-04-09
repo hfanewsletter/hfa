@@ -197,58 +197,78 @@ class Pipeline:
         # --- Stage 3-7: Per-group: dedup → rewrite → summarize → save ---
         processed: List[ProcessedArticle] = []
 
-        for group_idx, (group_articles, group_embedding) in enumerate(groups, 1):
+        # Phase A: dedup check (all in-memory — fast, no LLM calls)
+        to_rewrite = []   # list of (group_articles, group_embedding)
+        for group_articles, group_embedding in groups:
             primary = group_articles[0]
-            logger.info("--- Processing story %d/%d: '%s' (%d source(s)) ---",
-                        group_idx, len(groups), primary.title[:60], len(group_articles))
-
-            try:
-                # Cross-run duplicate check (embedding of primary article)
-                duplicate_of = self.deduplicator.is_duplicate(group_embedding)
-                if duplicate_of:
-                    logger.info("  DUPLICATE (already published): '%s'", primary.title)
-                    processed.append(ProcessedArticle(
-                        article=primary,
-                        summary="",
-                        embedding=group_embedding,
-                        pdf_link="",
-                        is_duplicate=True,
-                        duplicate_of=duplicate_of,
-                    ))
-                    continue
-
-                # Rewrite all versions into one article
-                rewritten_content = self.rewriter.rewrite(group_articles)
-
-                # Generate website URL
-                slug = generate_slug(primary.title)
-                website_url = f"{self.config.website.base_url}/article/{slug}"
-
-                # Composite importance score:
-                # Take the highest score from individual articles (LLM signal),
-                # then add 0.5 per additional source covering the same story
-                # (cross-paper consensus boost), capped at 10.
-                max_score = max(a.importance_score for a in group_articles)
-                final_score = min(10, round(max_score + (len(group_articles) - 1) * 0.5))
-
-                group_source_pdfs = list({
-                    os.path.basename(a.source_pdf) for a in group_articles
-                })
-
-                pa = ProcessedArticle(
+            duplicate_of = self.deduplicator.is_duplicate(group_embedding)
+            if duplicate_of:
+                logger.info("  DUPLICATE (already published): '%s'", primary.title)
+                processed.append(ProcessedArticle(
                     article=primary,
-                    summary="",               # filled by summarizer below
+                    summary="",
                     embedding=group_embedding,
-                    pdf_link=website_url,
-                    is_duplicate=False,
-                    rewritten_content=rewritten_content,
-                    importance_score=final_score,
-                    source_pdfs=group_source_pdfs,
-                )
-                processed.append(pa)
+                    pdf_link="",
+                    is_duplicate=True,
+                    duplicate_of=duplicate_of,
+                ))
+            else:
+                to_rewrite.append((group_articles, group_embedding))
 
+        logger.info(
+            "%d unique stories to rewrite (skipped %d duplicates). Rewriting %d parallel...",
+            len(to_rewrite), len(processed), self.rewriter.max_concurrent,
+        )
+
+        # Phase B: rewrite all non-duplicates in parallel
+        import concurrent.futures as _cf
+        rewrite_results: List[Optional[str]] = [None] * len(to_rewrite)
+
+        def _rewrite_worker(idx_articles):
+            idx, group_articles = idx_articles
+            try:
+                return idx, self.rewriter.rewrite(group_articles)
             except Exception as e:
-                logger.error("Failed to process group '%s': %s", primary.title, e, exc_info=True)
+                primary = group_articles[0]
+                logger.error("Failed to rewrite '%s': %s", primary.title, e, exc_info=True)
+                return idx, None
+
+        with _cf.ThreadPoolExecutor(max_workers=self.rewriter.max_concurrent) as executor:
+            futures = {
+                executor.submit(_rewrite_worker, (i, group_articles)): i
+                for i, (group_articles, _) in enumerate(to_rewrite)
+            }
+            for future in _cf.as_completed(futures):
+                idx, result = future.result()
+                rewrite_results[idx] = result
+
+        # Phase C: build ProcessedArticle list from rewrite results
+        for i, (group_articles, group_embedding) in enumerate(to_rewrite):
+            rewritten_content = rewrite_results[i]
+            if rewritten_content is None:
+                continue  # rewrite failed, skip this story
+
+            primary = group_articles[0]
+            slug = generate_slug(primary.title)
+            website_url = f"{self.config.website.base_url}/article/{slug}"
+
+            max_score = max(a.importance_score for a in group_articles)
+            final_score = min(10, round(max_score + (len(group_articles) - 1) * 0.5))
+
+            group_source_pdfs = list({
+                os.path.basename(a.source_pdf) for a in group_articles
+            })
+
+            processed.append(ProcessedArticle(
+                article=primary,
+                summary="",               # filled by summarizer below
+                embedding=group_embedding,
+                pdf_link=website_url,
+                is_duplicate=False,
+                rewritten_content=rewritten_content,
+                importance_score=final_score,
+                source_pdfs=group_source_pdfs,
+            ))
 
         # Summarize all unique articles
         processed = self.summarizer.summarize_all(processed)
