@@ -1,13 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import NewsletterModal from '@/components/newsletter/NewsletterModal'
 
 interface NavBarProps {
   categories: string[]
   hasEditorialsToday?: boolean
-  isAdmin?: boolean
 }
 
 // Editorial priority order: hard news → national/local → lifestyle → opinion → catch-all
@@ -36,8 +36,16 @@ function sortCategories(cats: string[]): string[] {
 }
 
 
-export default function NavBar({ categories, hasEditorialsToday = false, isAdmin = false }: NavBarProps) {
+export default function NavBar({ categories, hasEditorialsToday = false }: NavBarProps) {
   const pathname = usePathname()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/admin/me')
+      .then(r => r.json())
+      .then(d => setIsAdmin(d.isAdmin === true))
+      .catch(() => {})
+  }, [])
 
   function categoryHref(cat: string) {
     return `/section/${encodeURIComponent(cat.toLowerCase().replace(/\s+/g, '-'))}`

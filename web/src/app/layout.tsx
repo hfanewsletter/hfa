@@ -4,7 +4,6 @@ import Header from '@/components/layout/Header'
 import NavBar from '@/components/layout/NavBar'
 import Footer from '@/components/layout/Footer'
 import { getDB } from '@/lib/db'
-import { isAuthenticated } from '@/lib/auth'
 
 export const metadata: Metadata = {
   title: { default: 'The American Express Times', template: '%s | The American Express Times' },
@@ -34,17 +33,16 @@ async function getHasEditorialsToday() {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [categories, hasEditorialsToday, isAdmin] = await Promise.all([
+  const [categories, hasEditorialsToday] = await Promise.all([
     getCategories(),
     getHasEditorialsToday(),
-    isAuthenticated(),
   ])
 
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col">
         <Header />
-        <NavBar categories={categories} hasEditorialsToday={hasEditorialsToday} isAdmin={isAdmin} />
+        <NavBar categories={categories} hasEditorialsToday={hasEditorialsToday} />
         <main className="flex-1">{children}</main>
         <Footer />
       </body>
