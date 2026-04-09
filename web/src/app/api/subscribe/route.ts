@@ -49,12 +49,13 @@ function getSupabaseClient() {
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req)
 
-  if (isRateLimited(ip)) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please try again later.' },
-      { status: 429 }
-    )
-  }
+  // Rate limiting temporarily disabled — re-enable when bulk onboarding is complete
+  // if (isRateLimited(ip)) {
+  //   return NextResponse.json(
+  //     { error: 'Too many requests. Please try again later.' },
+  //     { status: 429 }
+  //   )
+  // }
 
   let body: Record<string, unknown>
   try {
