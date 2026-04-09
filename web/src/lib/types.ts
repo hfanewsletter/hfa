@@ -49,4 +49,6 @@ export interface HomepageData {
   featured: Article[]
   latest: Article[]
   categories: string[]
+  /** Set when showing a past edition because today has no articles yet */
+  fallbackDate?: string  // 'YYYY-MM-DD'
 }

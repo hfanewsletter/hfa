@@ -63,6 +63,17 @@ export function formatShortDate(iso: string): string {
  * and causes articles to archive 5 hours early for EST users.
  * offsetDays=1 returns tomorrow's date in EST, etc.
  */
+/** Advance a 'YYYY-MM-DD' string by N days (pure date arithmetic, no TZ issues). */
+export function advanceDateStr(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const shifted = new Date(y, m - 1, d + days)
+  return [
+    shifted.getFullYear(),
+    String(shifted.getMonth() + 1).padStart(2, '0'),
+    String(shifted.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
 export function getDateEST(offsetDays = 0): string {
   const base = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date())
   if (offsetDays === 0) return base

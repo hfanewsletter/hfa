@@ -8,7 +8,7 @@
 import path from 'path'
 import type { DBAdapter, Edition } from './index'
 import type { Article, PDFRecord, Schedule, WeeklyEdition, HomepageData } from '@/lib/types'
-import { getDateEST } from '@/lib/utils'
+import { getDateEST, advanceDateStr } from '@/lib/utils'
 
 function openDB() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -131,7 +131,7 @@ export class SQLiteAdapter implements DBAdapter {
     const db = openDB()
 
     const today = getDateEST() // 'YYYY-MM-DD' in America/New_York
-    const latest = db.prepare(
+    let rows = db.prepare(
       `SELECT * FROM articles WHERE DATE(published_at) = ? AND category != 'Editorial' ORDER BY importance_score DESC, published_at DESC LIMIT 12`
     ).all(today) as Record<string, unknown>[]
 
@@ -139,19 +139,38 @@ export class SQLiteAdapter implements DBAdapter {
       "SELECT DISTINCT category FROM articles WHERE category != 'Editorial' ORDER BY category"
     ).all() as { category: string }[]
 
+    let fallbackDate: string | undefined
+
+    // No articles today — fall back to most recent available date
+    if (rows.length === 0) {
+      const latestRow = db.prepare(
+        `SELECT DATE(published_at) as pub_date FROM articles WHERE category != 'Editorial' ORDER BY published_at DESC LIMIT 1`
+      ).get() as { pub_date: string } | undefined
+
+      if (latestRow?.pub_date) {
+        fallbackDate = latestRow.pub_date
+        rows = db.prepare(
+          `SELECT * FROM articles WHERE DATE(published_at) = ? AND category != 'Editorial' ORDER BY importance_score DESC, published_at DESC LIMIT 12`
+        ).all(fallbackDate) as Record<string, unknown>[]
+      }
+    }
+
     db.close()
 
-    const articles = latest.map(rowToArticle)
+    const articles = rows.map(rowToArticle)
     const categories = catRows.map(r => r.category)
 
-    // Breaking banner: first article with score >= 9; hero: highest remaining; featured: next 4
     const breaking = articles.find(a => a.importance_score >= 9) ?? null
     const rest = articles.filter(a => a.slug !== breaking?.slug)
-    const hero = rest[0] ?? null
-    const featured = rest.slice(1, 5)
-    const latestNews = rest.slice(5, 10)
 
-    return { breaking, hero, featured, latest: latestNews, categories }
+    return {
+      breaking,
+      hero: rest[0] ?? null,
+      featured: rest.slice(1, 5),
+      latest: rest.slice(5, 10),
+      categories,
+      fallbackDate,
+    }
   }
 
   async getEditionDates(limit = 60): Promise<Edition[]> {

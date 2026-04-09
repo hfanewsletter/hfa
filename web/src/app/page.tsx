@@ -24,7 +24,7 @@ export default async function HomePage() {
     )
   }
 
-  const { breaking, hero, featured, latest, categories } = data
+  const { breaking, hero, featured, latest, categories, fallbackDate } = data
 
   if (!breaking && !hero) {
     return (
@@ -42,6 +42,17 @@ export default async function HomePage() {
   return (
     <>
       {breaking && <BreakingBanner article={breaking} />}
+
+      {fallbackDate && (
+        <div className="bg-gray-50 border-b border-gray-200">
+          <p className="max-w-7xl mx-auto px-4 py-2 text-xs text-gray-500 text-center">
+            Today&apos;s edition hasn&apos;t been uploaded yet — showing the latest available edition from{' '}
+            <a href={`/archive/${fallbackDate}`} className="underline hover:text-primary">
+              {new Date(fallbackDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </a>.
+          </p>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

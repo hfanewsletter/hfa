@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { DBAdapter, Edition } from './index'
 import type { Article, PDFRecord, Schedule, WeeklyEdition, HomepageData } from '@/lib/types'
-import { getDateEST } from '@/lib/utils'
+import { getDateEST, advanceDateStr } from '@/lib/utils'
 
 function rowToArticle(row: Record<string, unknown>): Article {
   const sp = row.source_pdfs
@@ -104,6 +104,7 @@ export class SupabaseAdapter implements DBAdapter {
   async getHomepageData(): Promise<HomepageData> {
     const today    = getDateEST()     // 'YYYY-MM-DD' in America/New_York
     const tomorrow = getDateEST(1)
+
     const [articlesRes, catsRes] = await Promise.all([
       this.client.from('articles').select('*')
         .neq('category', 'Editorial')
@@ -115,8 +116,33 @@ export class SupabaseAdapter implements DBAdapter {
       this.client.from('articles').select('category').neq('category', 'Editorial'),
     ])
 
-    const articles = (articlesRes.data ?? []).map(rowToArticle)
+    let articles = (articlesRes.data ?? []).map(rowToArticle)
     const categories = Array.from(new Set((catsRes.data ?? []).map((r: { category: string }) => r.category))).sort() as string[]
+    let fallbackDate: string | undefined
+
+    // No articles today — fall back to most recent available date
+    if (articles.length === 0) {
+      const latestRes = await this.client.from('articles')
+        .select('published_at')
+        .neq('category', 'Editorial')
+        .lt('published_at', tomorrow)
+        .order('published_at', { ascending: false })
+        .limit(1)
+
+      if (latestRes.data?.length) {
+        const fd = latestRes.data[0].published_at.slice(0, 10)
+        fallbackDate = fd
+        const fallbackNext = advanceDateStr(fd, 1)
+        const fallbackRes = await this.client.from('articles').select('*')
+          .neq('category', 'Editorial')
+          .gte('published_at', fd)
+          .lt('published_at', fallbackNext)
+          .order('importance_score', { ascending: false })
+          .order('published_at', { ascending: false })
+          .limit(12)
+        articles = (fallbackRes.data ?? []).map(rowToArticle)
+      }
+    }
 
     // Breaking banner: first article with score >= 9; hero: highest remaining; featured: next 4
     const breaking = articles.find(a => a.importance_score >= 9) ?? null
@@ -128,6 +154,7 @@ export class SupabaseAdapter implements DBAdapter {
       featured: rest.slice(1, 5),
       latest: rest.slice(5, 10),
       categories,
+      fallbackDate,
     }
   }
 
