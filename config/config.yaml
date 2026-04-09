@@ -2,7 +2,7 @@
 # To switch providers, change 'provider' and update LLM_API_KEY in .env
 llm:
   provider: gemini # Options: gemini, openai
-  model: gemini-2.5-flash # Used for article extraction and summarization
+  model: gemini-2.0-flash # Used for article extraction and summarization (2.0 has less demand congestion than 2.5)
   embedding_model: gemini-embedding-001 # Used for duplicate detection. Alternative: gemini-embedding-2-preview (multimodal, preview)
   # Concurrency: how many parallel API calls to make.
   # Lower = fewer 503 rate-limit errors but slower. Higher = faster but needs higher API tier.

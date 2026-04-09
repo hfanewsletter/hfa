@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 TEXT_CHUNK_SIZE = 4   # Pages per API call for text PDFs
 IMAGE_CHUNK_SIZE = 2  # Pages per API call for image PDFs (larger payloads)
 REQUEST_TIMEOUT = 90  # Seconds before a single API call is considered hung
-MAX_RETRIES = 5       # Retry attempts per chunk on transient failures
-RETRY_BACKOFF = [5, 15, 30, 60, 120]  # Seconds to wait between retries
+MAX_RETRIES = 7       # Retry attempts per chunk on transient failures
+RETRY_BACKOFF = [5, 15, 30, 60, 120, 180, 240]  # Seconds to wait between retries
 
 
 class GeminiProvider(LLMProvider):
