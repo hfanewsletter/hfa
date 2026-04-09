@@ -51,8 +51,8 @@ export default function Header() {
               The American Express
             </span>
             <span
-              className="text-primary font-normal opacity-60 align-baseline"
-              style={{ fontSize: 'clamp(0.75rem, 1.4vw, 1.15rem)', letterSpacing: '0.08em', marginLeft: '0.4em' }}
+              className="font-normal align-baseline"
+              style={{ fontSize: 'clamp(0.75rem, 1.4vw, 1.15rem)', letterSpacing: '0.08em', marginLeft: '0.4em', color: '#1B2D5E' }}
             >
               Times
             </span>

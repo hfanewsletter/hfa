@@ -7,6 +7,7 @@ import NewsletterModal from '@/components/newsletter/NewsletterModal'
 interface NavBarProps {
   categories: string[]
   hasEditorialsToday?: boolean
+  isAdmin?: boolean
 }
 
 // Editorial priority order: hard news → national/local → lifestyle → opinion → catch-all
@@ -35,7 +36,7 @@ function sortCategories(cats: string[]): string[] {
 }
 
 
-export default function NavBar({ categories, hasEditorialsToday = false }: NavBarProps) {
+export default function NavBar({ categories, hasEditorialsToday = false, isAdmin = false }: NavBarProps) {
   const pathname = usePathname()
 
   function categoryHref(cat: string) {
@@ -72,14 +73,16 @@ export default function NavBar({ categories, hasEditorialsToday = false }: NavBa
             </Link>
           )}
 
-          {/* Email Digests */}
-          <Link
-            href="/newsletter"
-            className={`whitespace-nowrap px-4 py-3 text-sm font-bold transition-colors border-b-2
-              ${pathname.startsWith('/newsletter') ? 'text-accent border-accent' : 'text-gray-700 border-transparent hover:text-accent hover:border-accent'}`}
-          >
-            Email Digests
-          </Link>
+          {/* Email Digests — admin only */}
+          {isAdmin && (
+            <Link
+              href="/newsletter"
+              className={`whitespace-nowrap px-4 py-3 text-sm font-bold transition-colors border-b-2
+                ${pathname.startsWith('/newsletter') ? 'text-accent border-accent' : 'text-gray-700 border-transparent hover:text-accent hover:border-accent'}`}
+            >
+              Email Digests
+            </Link>
+          )}
 
           {/* Archive */}
           <Link
