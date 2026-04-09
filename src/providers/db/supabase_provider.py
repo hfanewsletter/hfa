@@ -76,9 +76,20 @@ class SupabaseDBProvider(DBProvider):
         return f"{base_slug}-{counter}"
 
     def find_similar_article(self, embedding: List[float], threshold: float) -> Optional[str]:
-        response = self.client.table("articles").select("title, embedding_json").execute()
-        rows = response.data or []
+        # Load embeddings once per pipeline run and cache in memory.
+        # Re-fetching the full embedding_json column on every call causes Supabase
+        # statement timeouts as the articles table grows.
+        # Only look back 60 days — duplicates older than that are not a concern.
+        if not hasattr(self, '_dedup_cache'):
+            from datetime import timedelta
+            cutoff = (datetime.now() - timedelta(days=60)).isoformat()
+            response = self.client.table("articles") \
+                .select("title, embedding_json") \
+                .gte("published_at", cutoff) \
+                .execute()
+            self._dedup_cache: list = response.data or []
 
+        rows = self._dedup_cache
         if not rows:
             return None
 

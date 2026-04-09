@@ -185,10 +185,19 @@ class SQLiteDBProvider(DBProvider):
         return f"{base_slug}-{counter}"
 
     def find_similar_article(self, embedding: List[float], threshold: float) -> Optional[str]:
-        conn = self._connect()
-        rows = conn.execute("SELECT title, embedding_json FROM articles").fetchall()
-        conn.close()
+        # Load embeddings once per pipeline run and cache in memory.
+        # Only look back 60 days — duplicates older than that are not a concern.
+        if not hasattr(self, '_dedup_cache'):
+            from datetime import timedelta
+            cutoff = (datetime.now() - timedelta(days=60)).isoformat()
+            conn = self._connect()
+            rows = conn.execute(
+                "SELECT title, embedding_json FROM articles WHERE published_at >= ?", (cutoff,)
+            ).fetchall()
+            conn.close()
+            self._dedup_cache: list = [dict(r) for r in rows]
 
+        rows = self._dedup_cache
         if not rows:
             return None
 
