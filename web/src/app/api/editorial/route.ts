@@ -3,9 +3,11 @@ import { getDB } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
-    const articles = await getDB().getEditorialArticles()
+    const { searchParams } = new URL(req.url)
+    const date = searchParams.get('date') ?? new Date().toISOString().slice(0, 10)
+    const articles = await getDB().getEditorialArticles(date)
     return NextResponse.json({ articles })
   } catch (err) {
     console.error(err)

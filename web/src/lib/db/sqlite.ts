@@ -339,20 +339,21 @@ export class SQLiteAdapter implements DBAdapter {
     return row.count
   }
 
-  async getEditorialArticles(): Promise<Article[]> {
+  async getEditorialArticles(date: string): Promise<Article[]> {
     const db = openDB()
     const rows = db.prepare(
-      `SELECT * FROM articles WHERE category = 'Editorial' ORDER BY published_at DESC LIMIT 60`
-    ).all() as Record<string, unknown>[]
+      `SELECT * FROM articles WHERE category = 'Editorial' AND DATE(published_at) = ? ORDER BY importance_score DESC, published_at DESC`
+    ).all(date) as Record<string, unknown>[]
     db.close()
     return rows.map(rowToArticle)
   }
 
-  async hasAnyEditorials(): Promise<boolean> {
+  async hasEditorialsToday(): Promise<boolean> {
     const db = openDB()
+    const today = getDateEST()
     const row = db.prepare(
-      `SELECT COUNT(*) as count FROM articles WHERE category = 'Editorial'`
-    ).get() as { count: number }
+      `SELECT COUNT(*) as count FROM articles WHERE category = 'Editorial' AND DATE(published_at) = ?`
+    ).get(today) as { count: number }
     db.close()
     return row.count > 0
   }

@@ -1,13 +1,15 @@
 import type { Metadata } from 'next'
 import { getDB } from '@/lib/db'
 import ArticleCard from '@/components/article/ArticleCard'
+import { getDateEST } from '@/lib/utils'
 
 export const metadata: Metadata = { title: 'Editorial' }
 
 export const revalidate = 60
 
 export default async function EditorialPage() {
-  const articles = await getDB().getEditorialArticles()
+  const today = getDateEST()
+  const articles = await getDB().getEditorialArticles(today)
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -16,10 +18,13 @@ export default async function EditorialPage() {
         <h1 className="font-serif text-3xl font-bold text-primary border-b-4 border-primary inline-block pb-1">
           Editorial
         </h1>
+        <p className="text-gray-500 text-sm mt-3">
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
       </div>
 
       {articles.length === 0 ? (
-        <p className="text-gray-500 text-sm">No editorial articles available.</p>
+        <p className="text-gray-500 text-sm">No editorial articles today.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {articles.map(a => <ArticleCard key={a.slug} article={a} variant="grid" />)}

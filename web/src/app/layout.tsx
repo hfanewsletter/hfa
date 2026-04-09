@@ -24,9 +24,9 @@ async function getCategories() {
   }
 }
 
-async function getHasAnyEditorials() {
+async function getHasEditorialsToday() {
   try {
-    return await getDB().hasAnyEditorials()
+    return await getDB().hasEditorialsToday()
   } catch {
     return false
   }
@@ -35,7 +35,7 @@ async function getHasAnyEditorials() {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [categories, hasEditorialsToday] = await Promise.all([
     getCategories(),
-    getHasAnyEditorials(),
+    getHasEditorialsToday(),
   ])
 
   return (

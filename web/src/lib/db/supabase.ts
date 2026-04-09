@@ -280,21 +280,27 @@ export class SupabaseAdapter implements DBAdapter {
     return new Set((data ?? []).map((r: { filename: string }) => r.filename)).size
   }
 
-  async getEditorialArticles(): Promise<Article[]> {
+  async getEditorialArticles(date: string): Promise<Article[]> {
     const { data } = await this.client
       .from('articles')
       .select('*')
       .eq('category', 'Editorial')
+      .gte('published_at', `${date}T00:00:00`)
+      .lt('published_at', `${date}T23:59:59`)
+      .order('importance_score', { ascending: false })
       .order('published_at', { ascending: false })
-      .limit(60)
     return (data ?? []).map(rowToArticle)
   }
 
-  async hasAnyEditorials(): Promise<boolean> {
+  async hasEditorialsToday(): Promise<boolean> {
+    const today    = getDateEST()
+    const tomorrow = getDateEST(1)
     const { count } = await this.client
       .from('articles')
       .select('id', { count: 'exact', head: true })
       .eq('category', 'Editorial')
+      .gte('published_at', today)
+      .lt('published_at', tomorrow)
     return (count ?? 0) > 0
   }
 
