@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { getDB } from '@/lib/db'
 import { isAuthenticated } from '@/lib/auth'
 import AdminRefresh from './AdminRefresh'
+import SignOutButton from '@/components/admin/SignOutButton'
 
 export const metadata: Metadata = { title: 'Admin' }
 
@@ -31,10 +32,7 @@ export default async function AdminPage() {
           <p className="text-xs text-gray-400 uppercase tracking-widest mb-0.5">Admin Panel</p>
           <h1 className="font-serif text-2xl font-bold text-primary">The American Express Times</h1>
         </div>
-        <a href="/api/auth/signout"
-          className="text-xs text-gray-400 hover:text-gray-700 underline">
-          Sign out
-        </a>
+        <SignOutButton />
       </div>
 
       {/* Stats */}
