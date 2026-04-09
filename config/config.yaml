@@ -1,13 +1,24 @@
 # LLM Configuration
 # To switch providers, change 'provider' and update LLM_API_KEY in .env
+#
+# OpenAI (recommended for production):
+#   provider: openai
+#   model: gpt-4o
+#   embedding_model: text-embedding-3-small
+#   max_concurrent: 5   (500 RPM Tier 1 — handles 20 PDFs comfortably)
+#
+# Gemini (alternative):
+#   provider: gemini
+#   model: gemini-2.5-flash
+#   embedding_model: gemini-embedding-001
+#   max_concurrent: 3   (15 RPM Tier 1 — prone to 503 overload errors)
 llm:
-  provider: gemini # Options: gemini, openai
-  model: gemini-2.5-flash # Used for article extraction and summarization (2.0 has less demand congestion than 2.5)
-  embedding_model: gemini-embedding-001 # Used for duplicate detection. Alternative: gemini-embedding-2-preview (multimodal, preview)
-  # Concurrency: how many parallel API calls to make.
-  # Lower = fewer 503 rate-limit errors but slower. Higher = faster but needs higher API tier.
-  # Gemini Tier 1 (default): keep at 3. Tier 2 (2000 RPM): can increase to 5-10.
-  max_concurrent: 3
+  provider: openai
+  model: gpt-4o
+  embedding_model: text-embedding-3-small
+  # Concurrency: parallel API calls per stage (extraction, embedding, summarization).
+  # OpenAI Tier 1: 500 RPM → can safely use 5. Gemini Tier 1: 15 RPM → keep at 3.
+  max_concurrent: 5
 
 # Storage Configuration
 # To switch to cloud storage, change 'provider' and add relevant credentials to .env

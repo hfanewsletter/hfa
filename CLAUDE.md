@@ -66,7 +66,7 @@ All runtime behaviour is controlled by `config/config.yaml` plus environment var
 |---|---|
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | Service role key (bypasses RLS, used by both DB and Storage providers) |
-| `LLM_API_KEY` | Gemini API key |
+| `LLM_API_KEY` | OpenAI API key (or Gemini key if using Gemini provider) |
 | `STORAGE_PROVIDER` | Must be `supabase` (defaults to `local` from config.yaml) |
 | `WEBSITE_BASE_URL` | Production URL, e.g. `https://theamericanexpress.us` (no trailing slash) |
 | `EMAIL_SENDER` | Resend sender address (e.g. `news@theamericanexpress.us`) |
@@ -118,9 +118,12 @@ web/ (Next.js website — npm run dev)
 
 **LLM providers** (`src/providers/llm/`):
 - `base.py` — `LLMProvider` ABC: `extract_articles()`, `get_embedding()`, `rewrite_articles()`, `summarize()`, `extract_newspaper_date()`
-- `gemini.py` — active implementation (`gemini-2.5-flash` + `gemini-embedding-001`)
-  - Concurrency controlled via `llm.max_concurrent` in `config.yaml` (default 3 — keep low on Tier 1 to avoid 503s)
-  - `MAX_RETRIES = 5`, backoff `[5, 15, 30, 60, 120]`s
+- `openai_provider.py` — **active/recommended** (`gpt-4o` + `text-embedding-3-small`)
+  - 500 RPM Tier 1 — handles 20 PDFs without overload. Set `max_concurrent: 5` in config.
+  - `MAX_RETRIES = 7`, backoff `[5, 15, 30, 60, 120, 180, 240]`s
+- `gemini.py` — alternative (`gemini-2.5-flash` + `gemini-embedding-001`)
+  - Only 15 RPM Tier 1 — prone to 503 overload with multiple PDFs. Set `max_concurrent: 3`.
+  - `MAX_RETRIES = 7`, same backoff schedule
   - Articles with titles starting "Untitled" are filtered out
 - `__init__.py` — `get_llm_provider(name, api_key, model, embedding_model, max_concurrent)` factory
 

@@ -1,8 +1,9 @@
 from src.providers.llm.base import LLMProvider
 from src.providers.llm.gemini import GeminiProvider
+from src.providers.llm.openai_provider import OpenAIProvider
 
 
-def get_llm_provider(provider_name: str, api_key: str, model: str, embedding_model: str = "gemini-embedding-exp-03-07", max_concurrent: int = 3) -> LLMProvider:
+def get_llm_provider(provider_name: str, api_key: str, model: str, embedding_model: str = "gemini-embedding-001", max_concurrent: int = 3) -> LLMProvider:
     """
     Factory function. Returns appropriate LLM provider instance.
     To add a new provider: create a new file in this directory implementing LLMProvider,
@@ -10,7 +11,7 @@ def get_llm_provider(provider_name: str, api_key: str, model: str, embedding_mod
     """
     providers = {
         "gemini": GeminiProvider,
-        # "openai": OpenAIProvider,  # Uncomment when implementing
+        "openai": OpenAIProvider,
     }
     if provider_name not in providers:
         raise ValueError(
