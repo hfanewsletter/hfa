@@ -153,6 +153,8 @@ class Pipeline:
                 pdf_records.append((pdf_path, pdf_record_id, filename))
 
                 articles = self.extractor.extract_from_pdf(pdf_bytes, pdf_path)
+                # Free PDF bytes immediately — they can be hundreds of MB for image PDFs
+                del pdf_bytes
                 logger.info("Extracted %d articles from '%s'", len(articles), filename)
                 # Force category for editorial PDFs
                 if pdf_path in editorial_pdf_set:

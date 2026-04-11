@@ -120,8 +120,10 @@ class PDFProcessor:
 
         for page_num, page in enumerate(doc, start=1):
             pixmap = page.get_pixmap(matrix=zoom_matrix)
-            # Convert to PNG bytes
+            # Convert to PNG bytes and immediately release the pixmap — it holds a large
+            # native memory buffer that Python's GC won't reclaim until del is called.
             img_bytes = pixmap.tobytes("png")
+            del pixmap
             pages.append({
                 "page_num": page_num,
                 "image_bytes": img_bytes,

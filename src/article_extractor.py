@@ -33,11 +33,16 @@ class ArticleExtractor:
         content = self.pdf_processor.extract_content(pdf_bytes, source_pdf)
 
         # Step 2: Use LLM to identify and extract articles
+        content_type = content["type"]
         articles = self.llm.extract_articles(content)
+
+        # Free the page content (potentially large image buffers) as soon as the LLM
+        # is done — don't wait for Python's GC to eventually collect it.
+        del content
 
         logger.info(
             "Extracted %d articles from %s (type: %s)",
-            len(articles), source_pdf, content["type"]
+            len(articles), source_pdf, content_type
         )
         return articles
 

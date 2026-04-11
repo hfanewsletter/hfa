@@ -161,6 +161,7 @@ Schema: `scripts/supabase_schema.sql` (migration: `scripts/add_subscribers_table
 - **Move-or-delete from inbox**: After processing, `move_to_processed()` moves the file. If move fails (destination exists), deletes the inbox copy instead.
 - **PDF record dedup**: `save_pdf_record()` finds and updates existing pending/processing records instead of always inserting new ones.
 - **Email-before-digest**: Digest record only saved to DB after at least one email is delivered successfully.
+- **Single digest per day (inbox-empty check)**: After each pipeline run, the pipeline checks if more PDFs are still sitting in the inbox (uploaded while this batch was processing). If yes, the email is deferred — no digest sent or saved. When the inbox is finally empty (last batch), the email is built from **all of today's articles** in the DB (not just this run's batch), so a single digest covers every PDF uploaded that day regardless of how many pipeline runs processed them.
 
 ## Newspaper date detection (4-step chain)
 
@@ -204,6 +205,7 @@ If all four fail, `published_at` defaults to today's date.
 - `unsubscribe_url` is per-recipient (contains subscriber's UUID token)
 - Sends via Resend HTTP API (no SMTP). Requires `RESEND_API_KEY` env var.
 - `send_digest()` returns `True`/`False` — digest record only saved on success.
+- **Deferred when inbox is not empty**: If more PDFs are still in the inbox after a pipeline run, the email is skipped entirely (no partial digest saved). The final run (empty inbox) queries all of today's articles from the DB via `get_articles_since(today_start)` and sends one combined email covering every PDF processed that day.
 
 ## Tech stack
 

@@ -351,6 +351,8 @@ Check that `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set in Render environme
 ### Email is not being sent
 Check Railway logs for Resend API errors. Confirm `EMAIL_SENDER` is an address on your verified Resend domain and `RESEND_API_KEY` is correct.
 
+If you see "Deferring email digest" in the logs, the email is being intentionally held back because more PDFs are still in the inbox. This is normal — the digest will be sent automatically once all PDFs have finished processing and the inbox is empty.
+
 ### Railway deployment fails with "No start command"
 Make sure **Start Command** is set to `python src/main.py` in Railway → Settings tab.
 

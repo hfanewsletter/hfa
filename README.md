@@ -261,7 +261,7 @@ The pipeline will:
 5. Group same-story articles across newspapers and rewrite each into one unified article
 6. Skip any stories already published in a previous run (semantic deduplication)
 7. Save articles to the database with website URLs
-8. Send the email digest to all subscribers (digest is only saved after confirmed delivery)
+8. **Send the email digest** — only when the inbox is fully empty. If more PDFs are still waiting, the email is deferred until the final batch finishes. The digest always includes all of today's articles (across all batches), so you receive exactly one email per day no matter how many PDFs you upload
 9. Move the processed PDFs to `processed/`
 
 For **editorial PDFs** (dropped into `editorial_inbox/`):
@@ -430,6 +430,7 @@ You have hit the API rate limit. The pipeline retries automatically (up to 5 tim
 
 ### PDF moved to `processed/` but no email received
 Check `logs/app.log`. Common causes:
+- **More PDFs still in the inbox** — the email is intentionally deferred when other PDFs are still being processed. It will be sent once the inbox is empty (after all PDFs finish)
 - Email credential issue
 - No articles found in the PDF (ads-only pages, wrong language, etc.)
 - `max_newspaper_age_days` is excluding the PDF — look for "is X days old" in the log
