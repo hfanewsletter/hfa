@@ -23,7 +23,6 @@ from src.pipeline import Pipeline
 from src.digest_store import DigestStore
 from src.email_sender import EmailSender
 from src.providers.db import get_db_provider
-from src.weekly_scheduler import WeeklyScheduler
 
 
 def setup_logging(log_level: str, log_file: str) -> None:
@@ -121,8 +120,6 @@ def main() -> None:
         pipeline.run()  # Process all existing inbox files
 
     if not args.run_once:
-        scheduler = WeeklyScheduler()
-        scheduler.start()
         if config.storage.provider == 'local':
             watcher = FolderWatcher(config)
             watcher.start()

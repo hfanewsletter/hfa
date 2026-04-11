@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import UploadForm from '@/components/admin/UploadForm'
 import PDFList from '@/components/admin/PDFList'
-import ScheduleManager from '@/components/admin/ScheduleManager'
 
 export default function AdminRefresh() {
   const [refreshTick, setRefreshTick] = useState(0)
@@ -17,7 +16,6 @@ export default function AdminRefresh() {
         description="Drop editorial or opinion PDFs here. Articles will appear under the Editorial section and be included in the email digest."
       />
       <PDFList refreshTrigger={refreshTick} />
-      <ScheduleManager />
     </div>
   )
 }
