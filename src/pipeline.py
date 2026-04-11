@@ -318,19 +318,73 @@ class Pipeline:
             total, unique_count, total - unique_count,
         )
 
-        # Exclude articles from stale newspapers from the email digest
-        email_articles = [
-            pa for pa in processed
-            if not pa.is_duplicate and pa.article.source_pdf not in stale_pdf_paths
-        ]
+        # Check if more PDFs are still waiting in the inbox (uploaded while this batch
+        # was processing). If so, defer the email — it will be sent after all PDFs finish.
+        processed_in_this_run = {os.path.basename(p) for p in pdf_paths}
+        try:
+            remaining_inbox = self.storage.list_new_files()
+            remaining_inbox = [
+                f for f in remaining_inbox
+                if os.path.basename(f) not in processed_in_this_run
+            ]
+        except Exception:
+            remaining_inbox = []
 
-        if unique_count > 0:
+        if remaining_inbox:
+            logger.info(
+                "Deferring email digest — %d more PDF(s) still pending in inbox. "
+                "Email will be sent after all PDFs are processed.",
+                len(remaining_inbox),
+            )
+        elif unique_count > 0:
+            # Inbox is empty — build the email from ALL of today's articles (not just
+            # this run's batch), so a single digest covers every PDF uploaded today.
+            from datetime import date as _date, time as _time
+            today_start = datetime.combine(_date.today(), _time.min, tzinfo=timezone.utc)
+            try:
+                todays_records = self.db.get_articles_since(today_start, limit=200)
+            except Exception as e:
+                logger.warning("Could not load today's articles from DB for digest: %s", e)
+                todays_records = []
+
+            if todays_records:
+                email_articles = [
+                    ProcessedArticle(
+                        article=Article(
+                            title=r.title,
+                            content="",
+                            page_number=0,
+                            source_pdf="",
+                            category=r.category,
+                        ),
+                        summary=r.summary,
+                        embedding=[],
+                        pdf_link=r.website_url,
+                        is_duplicate=False,
+                        rewritten_content=r.rewritten_content,
+                        importance_score=r.importance_score,
+                        source_pdfs=r.source_pdfs,
+                    )
+                    for r in todays_records
+                    if r.source_pdfs  # skip stale-archived articles with no source_pdfs
+                ]
+                # Exclude articles sourced exclusively from stale newspapers
+                stale_filenames = {os.path.basename(p) for p in stale_pdf_paths}
+                email_articles = [
+                    pa for pa in email_articles
+                    if not pa.source_pdfs or not all(
+                        s in stale_filenames for s in (pa.source_pdfs or [])
+                    )
+                ]
+            else:
+                email_articles = []
+
             if not email_articles:
-                logger.info(
-                    "All %d articles are from stale newspapers — skipping email digest.", unique_count
-                )
+                logger.info("No articles eligible for today's email digest.")
             elif self.config.email.send_immediately:
-                logger.info("Sending email digest (%d articles)...", len(email_articles))
+                logger.info(
+                    "Sending email digest (%d articles from today)...", len(email_articles)
+                )
                 email_sent = self.email_sender.send_digest(email_articles)
                 if email_sent:
                     self.digest_store.save_digest(processed)
