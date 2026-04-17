@@ -361,7 +361,7 @@ class Pipeline:
                         ),
                         summary=r.summary,
                         embedding=[],
-                        pdf_link=r.website_url,
+                        pdf_link=f"{self.config.website.base_url}/article/{r.slug}",
                         is_duplicate=False,
                         rewritten_content=r.rewritten_content,
                         importance_score=r.importance_score,
