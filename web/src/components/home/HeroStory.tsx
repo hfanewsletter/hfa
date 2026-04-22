@@ -5,24 +5,29 @@ import ShareRow from '@/components/article/ShareRow'
 
 export default function HeroStory({ article }: { article: Article }) {
   return (
-    <Link href={`/article/${article.slug}`} className="block group">
+    <div className="relative group block">
       <div className="bg-white rounded border border-gray-200 border-t-4 border-t-accent card-hover overflow-hidden">
         <div className="p-6 md:p-8">
 
-          {/* Category badge */}
-          <span className="bg-accent text-white section-tag inline-block mb-4">
+          {/* Category badge — links to section page, sits above the stretched article link */}
+          <Link
+            href={`/section/${encodeURIComponent(article.category.toLowerCase().replace(/\s+/g, '-'))}`}
+            className="relative z-10 bg-accent text-white section-tag inline-block mb-4 hover:bg-red-700 transition-colors"
+          >
             {article.category}
-          </span>
+          </Link>
 
           {/* Red accent rule */}
           <div className="w-10 h-0.5 bg-accent mb-4" />
 
-          {/* Headline — large, this is the visual hero now */}
+          {/* Headline — stretched link covers whole card via ::after */}
           <h2
             className="font-serif font-bold text-primary leading-tight mb-4 group-hover:text-accent transition-colors"
             style={{ fontSize: 'clamp(1.6rem, 3.5vw, 2.6rem)' }}
           >
-            {article.title}
+            <Link href={`/article/${article.slug}`} className="after:absolute after:inset-0">
+              {article.title}
+            </Link>
           </h2>
 
           {/* Summary — show more text than grid cards */}
@@ -31,7 +36,7 @@ export default function HeroStory({ article }: { article: Article }) {
           </p>
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-100 text-xs text-gray-400">
+          <div className="relative z-10 flex items-center justify-between pt-4 border-t border-gray-100 text-xs text-gray-400">
             <div className="flex items-center gap-3">
               <span>{formatShortDate(article.published_at)}</span>
               <ShareRow title={article.title} slug={article.slug} />
@@ -43,6 +48,6 @@ export default function HeroStory({ article }: { article: Article }) {
 
         </div>
       </div>
-    </Link>
+    </div>
   )
 }

@@ -26,26 +26,35 @@ export default function ArticleCard({ article, variant = 'grid' }: Props) {
   }
 
   // Grid variant — left red border anchors the card, no image area
+  // Uses stretched-link pattern so category badge can be a real link
+  // without nesting <a> inside <a>.
   return (
-    <Link
-      href={`/article/${article.slug}`}
-      className="block group bg-white rounded border border-gray-200 card-hover overflow-hidden"
+    <div
+      className="relative group bg-white rounded border border-gray-200 card-hover overflow-hidden"
       style={{ borderLeft: '4px solid #B22234' }}
     >
       <div className="p-4">
 
-        {/* Category badge */}
-        <span className="section-tag bg-accent text-white text-[10px] inline-block mb-3">
+        {/* Category badge — links to section page, sits above the stretched article link */}
+        <Link
+          href={`/section/${encodeURIComponent(article.category.toLowerCase().replace(/\s+/g, '-'))}`}
+          className="relative z-10 section-tag bg-accent text-white text-[10px] inline-block mb-3 hover:bg-red-700 transition-colors"
+        >
           {article.category}
-        </span>
+        </Link>
 
         {/* Small accent rule */}
         <div className="w-6 h-0.5 bg-accent mb-3 opacity-70" />
 
-        {/* Title */}
+        {/* Title — stretched link covers the whole card via ::after */}
         <h3 className="font-serif text-base font-bold text-primary leading-snug mb-2 line-clamp-3
                         group-hover:text-accent transition-colors">
-          {article.title}
+          <Link
+            href={`/article/${article.slug}`}
+            className="after:absolute after:inset-0"
+          >
+            {article.title}
+          </Link>
         </h3>
 
         {/* Summary */}
@@ -53,11 +62,11 @@ export default function ArticleCard({ article, variant = 'grid' }: Props) {
           {truncate(article.summary, 25)}
         </p>
 
-        <div className="flex items-center justify-between mt-3">
+        <div className="relative z-10 flex items-center justify-between mt-3">
           <span className="text-xs text-gray-400">{formatShortDate(article.published_at)}</span>
           <ShareRow title={article.title} slug={article.slug} />
         </div>
       </div>
-    </Link>
+    </div>
   )
 }

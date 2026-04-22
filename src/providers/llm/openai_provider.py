@@ -288,6 +288,7 @@ REQUIREMENTS:
 - Do NOT include a headline — write only the article body
 - Do NOT mention or name the source publications
 - If sources disagree, present both sides fairly
+- Preserve all proper nouns (people's names, place names, organisation names) exactly as they appear in the source material — do not alter their spelling
 
 SOURCE MATERIAL ({num_sources} source{'s' if num_sources > 1 else ''}):
 {sources_block}
