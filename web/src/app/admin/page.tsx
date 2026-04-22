@@ -6,6 +6,7 @@ import { isAuthenticated } from '@/lib/auth'
 import AdminRefresh from './AdminRefresh'
 import SignOutButton from '@/components/admin/SignOutButton'
 
+export const dynamic = 'force-dynamic' // always fetch live data — never serve a cached count
 export const metadata: Metadata = { title: 'Admin' }
 
 export default async function AdminPage() {
