@@ -17,6 +17,20 @@ CREATE TABLE IF NOT EXISTS articles (
     image_url         TEXT NOT NULL DEFAULT ''
 );
 
+-- Efficient distinct categories (avoids full table scan in JS)
+CREATE OR REPLACE FUNCTION get_distinct_categories()
+RETURNS TABLE(category TEXT)
+LANGUAGE sql STABLE AS $$
+  SELECT DISTINCT category FROM articles WHERE category != 'Editorial' ORDER BY category;
+$$;
+
+-- Efficient processed PDF count with dedup (avoids fetching all rows to JS)
+CREATE OR REPLACE FUNCTION get_processed_pdf_count()
+RETURNS BIGINT
+LANGUAGE sql STABLE AS $$
+  SELECT COUNT(DISTINCT filename) FROM pdfs WHERE status = 'processed';
+$$;
+
 -- Helper function for archive edition listing (used by Supabase adapter)
 CREATE OR REPLACE FUNCTION get_edition_dates(p_limit INT DEFAULT 60)
 RETURNS TABLE(edition_date DATE, article_count BIGINT, top_title TEXT, top_category TEXT, top_image_url TEXT)

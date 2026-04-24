@@ -93,12 +93,11 @@ export class SupabaseAdapter implements DBAdapter {
   }
 
   async getCategories(): Promise<string[]> {
-    const { data } = await this.client
-      .from('articles')
-      .select('category')
-      .neq('category', 'Editorial')
-    const cats = Array.from(new Set((data ?? []).map((r: { category: string }) => r.category)))
-    return cats.sort()
+    // Use RPC to get DISTINCT categories in one efficient DB-side query.
+    // The old approach fetched every article row and deduped in JS — extremely
+    // expensive at 13k+ articles and called on every page load via the layout.
+    const { data } = await this.client.rpc('get_distinct_categories')
+    return ((data ?? []) as { category: string }[]).map(r => r.category).sort()
   }
 
   async getHomepageData(): Promise<HomepageData> {
@@ -113,11 +112,11 @@ export class SupabaseAdapter implements DBAdapter {
         .order('importance_score', { ascending: false })
         .order('published_at', { ascending: false })
         .limit(12),
-      this.client.from('articles').select('category').neq('category', 'Editorial'),
+      this.client.rpc('get_distinct_categories'),
     ])
 
     let articles = (articlesRes.data ?? []).map(rowToArticle)
-    const categories = Array.from(new Set((catsRes.data ?? []).map((r: { category: string }) => r.category))).sort() as string[]
+    const categories = ((catsRes.data ?? []) as { category: string }[]).map(r => r.category).sort()
     let fallbackDate: string | undefined
 
     // No articles today — fall back to most recent available date
@@ -272,12 +271,9 @@ export class SupabaseAdapter implements DBAdapter {
   }
 
   async getProcessedPDFCount(): Promise<number> {
-    const { data } = await this.client
-      .from('pdfs')
-      .select('filename')
-      .eq('status', 'processed')
-    // Deduplicate by filename (pipeline may insert multiple records per file)
-    return new Set((data ?? []).map((r: { filename: string }) => r.filename)).size
+    // COUNT(DISTINCT filename) via RPC — avoids fetching all rows to JS for dedup
+    const { data } = await this.client.rpc('get_processed_pdf_count')
+    return (data as number) ?? 0
   }
 
   async getSubscriberCount(): Promise<number> {
