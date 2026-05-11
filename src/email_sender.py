@@ -4,29 +4,26 @@ from typing import List, Tuple
 from datetime import datetime
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
-import resend
+import httpx
 
 from src.models import ProcessedArticle
 
 logger = logging.getLogger(__name__)
 
+SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
+
 
 class EmailSender:
 
     def __init__(self, config, db_provider=None):
-        """
-        config: EmailConfig dataclass with sender, send_immediately, etc.
-        db_provider: DBProvider instance for fetching subscribers from the database.
-        """
         self.config = config
         self.db = db_provider
         template_dir = Path(__file__).parent.parent / "templates"
         self.jinja_env = Environment(loader=FileSystemLoader(str(template_dir)))
 
-        resend_api_key = os.getenv("RESEND_API_KEY", "")
-        if not resend_api_key:
-            logger.error("RESEND_API_KEY not set — cannot send emails.")
-        resend.api_key = resend_api_key
+        self.api_key = os.getenv("SENDGRID_API_KEY", "")
+        if not self.api_key:
+            logger.error("SENDGRID_API_KEY not set — cannot send emails.")
 
     def _get_subscribers(self) -> List[Tuple[str, str]]:
         """
@@ -60,8 +57,8 @@ class EmailSender:
             logger.info("No unique articles to send in digest.")
             return False
 
-        if not os.getenv("RESEND_API_KEY", ""):
-            logger.error("RESEND_API_KEY not set — cannot send digest.")
+        if not self.api_key:
+            logger.error("SENDGRID_API_KEY not set — cannot send digest.")
             return False
 
         subscribers = self._get_subscribers()
@@ -110,11 +107,21 @@ class EmailSender:
         )
 
     def _send_email(self, recipient: str, subject: str, html_body: str) -> None:
-        params = {
-            "from": f"{self.config.title} <{self.config.sender}>",
-            "to": [recipient],
+        payload = {
+            "personalizations": [{"to": [{"email": recipient}]}],
+            "from": {"email": self.config.sender, "name": self.config.title},
             "subject": subject,
-            "html": html_body,
+            "content": [{"type": "text/html", "value": html_body}],
         }
-        response = resend.Emails.send(params)
-        logger.debug("Resend response for %s: %s", recipient, response)
+        response = httpx.post(
+            SENDGRID_API_URL,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=30,
+        )
+        if response.status_code not in (200, 202):
+            raise RuntimeError(f"SendGrid error {response.status_code}: {response.text}")
+        logger.debug("SendGrid response for %s: %s", recipient, response.status_code)
