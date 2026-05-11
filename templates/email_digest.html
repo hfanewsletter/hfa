@@ -7,7 +7,20 @@
 </head>
 <body style="margin:0;padding:0;background-color:#F0EDE6;font-family:Georgia,serif;">
 
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F0EDE6;padding:30px 0;">
+  <!-- View in browser bar -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F0EDE6;padding:8px 0 0;">
+    <tr>
+      <td align="center">
+        <p style="margin:0;font-size:12px;font-family:Arial,sans-serif;color:#888888;">
+          Having trouble viewing this email?
+          <a href="{{ website_base_url }}/archive/{{ date_iso }}"
+             style="color:#B22234;text-decoration:underline;">View in browser</a>
+        </p>
+      </td>
+    </tr>
+  </table>
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F0EDE6;padding:12px 0 30px;">
     <tr>
       <td align="center">
         <table width="640" cellpadding="0" cellspacing="0"
@@ -124,7 +137,7 @@
                 {{ item.article.title }}
               </h2>
               <p style="margin:0 0 16px;color:#444444;font-size:15px;line-height:1.75;">
-                {{ item.summary }}
+                {{ item.summary.split('. ')[:2] | join('. ') }}{% if item.summary.split('. ') | length > 2 %}…{% endif %}
               </p>
               <a href="{{ item.pdf_link }}"
                  style="display:inline-block;background-color:#B22234;color:#ffffff;
