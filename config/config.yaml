@@ -32,8 +32,8 @@ storage:
 
 # Email Configuration
 email:
-  # Sender address — must be on a verified Resend domain
-  # API key comes from RESEND_API_KEY in .env
+  # Sender address — must be verified in SendGrid (Sender Authentication)
+  # API key comes from SENDGRID_API_KEY in .env
   subscribers:
     - tableaulancer@gmail.com
     - curiousmindshex@gmail.com

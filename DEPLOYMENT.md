@@ -161,6 +161,7 @@ Scroll down to **Environment Variables** and add each of these:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Your Supabase anon key from Step 2.4 |
 | `ADMIN_PASSWORD` | A strong random password (run `openssl rand -base64 20` to generate one) |
 | `AUTH_SECRET` | Another strong random string (run `openssl rand -base64 32`) |
+| `SENDGRID_WEBHOOK_SECRET` | Secret for the bounce/spam webhook. Generate with `openssl rand -hex 32` |
 | `WEBSITE_BASE_URL` | Leave blank for now — you'll fill this in after deployment |
 
 ### 3.4 Deploy
@@ -218,7 +219,7 @@ SUPABASE_URL=your_supabase_project_url
 SUPABASE_SERVICE_KEY=your_supabase_service_role_key
 LLM_API_KEY=your_gemini_api_key
 EMAIL_SENDER=news@yourdomain.com
-RESEND_API_KEY=re_your_resend_api_key
+SENDGRID_API_KEY=SG.your_sendgrid_api_key
 WEBSITE_BASE_URL=https://your-site.onrender.com
 STORAGE_PROVIDER=supabase
 ```
@@ -330,8 +331,8 @@ If you have a domain name (e.g. `americanexpresstimes.com`):
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | Service role key (for DB + Storage) |
 | `LLM_API_KEY` | Gemini API key |
-| `EMAIL_SENDER` | Resend sender address (e.g. `news@yourdomain.com`) |
-| `RESEND_API_KEY` | Resend API key (starts with `re_`) |
+| `EMAIL_SENDER` | SendGrid sender address (e.g. `news@yourdomain.com`) |
+| `SENDGRID_API_KEY` | SendGrid API key (starts with `SG.`) |
 | `WEBSITE_BASE_URL` | Your Render URL or custom domain |
 | `STORAGE_PROVIDER` | Set to `supabase` |
 
@@ -349,7 +350,7 @@ You forgot to add that environment variable in Railway. Go to Variables tab, add
 Check that `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set in Render environment variables. Also confirm the `pdfs` storage bucket exists in Supabase (Step 2.3).
 
 ### Email is not being sent
-Check Railway logs for Resend API errors. Confirm `EMAIL_SENDER` is an address on your verified Resend domain and `RESEND_API_KEY` is correct.
+Check Railway logs for SendGrid API errors. Confirm `EMAIL_SENDER` is an address on your verified SendGrid domain and `SENDGRID_API_KEY` is correct.
 
 If you see "Deferring email digest" in the logs, the email is being intentionally held back because more PDFs are still in the inbox. This is normal — the digest will be sent automatically once all PDFs have finished processing and the inbox is empty.
 

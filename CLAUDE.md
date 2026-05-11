@@ -69,8 +69,9 @@ All runtime behaviour is controlled by `config/config.yaml` plus environment var
 | `LLM_API_KEY` | OpenAI API key (or Gemini key if using Gemini provider) |
 | `STORAGE_PROVIDER` | Must be `supabase` (defaults to `local` from config.yaml) |
 | `WEBSITE_BASE_URL` | Production URL, e.g. `https://theamericanexpress.us` (no trailing slash) |
-| `EMAIL_SENDER` | Resend sender address (e.g. `news@theamericanexpress.us`) |
-| `RESEND_API_KEY` | Resend API key (starts with `re_`) |
+| `EMAIL_SENDER` | SendGrid sender address (e.g. `news@theamericanexpress.us`) |
+| `SENDGRID_API_KEY` | SendGrid API key (starts with `SG.`) |
+| `SENDGRID_WEBHOOK_SECRET` | Secret token for bounce/spam webhook endpoint (set same value in Render) |
 
 ## Architecture
 
@@ -97,8 +98,9 @@ src/pipeline.py           orchestrates the full flow
   ├─ src/providers/db/        saves articles + PDFs to SQLite (dev) or Supabase (prod)
   │    └─ data/articles.db    SQLite: articles, pdfs, digests, weekly_editions, schedules
   ├─ src/digest_store.py      saves digest record AFTER successful email delivery
-  └─ src/email_sender.py      Resend API → renders templates/email_digest.html
+  └─ src/email_sender.py      SendGrid API → renders templates/email_digest.html
        │                        Per-recipient unsubscribe links (UUID tokens)
+       │                        List-Unsubscribe + List-Unsubscribe-Post headers on every email
        ▼
 processed/ (local folder or Supabase Storage "pdfs/processed/")
 
@@ -110,8 +112,10 @@ web/ (Next.js website — npm run dev)
   ├─ /archive/:date        Edition page: hero + featured + sidebar (8 max) + full-width grid
   ├─ /newsletter           Email digest archive
   ├─ /admin                Upload PDFs, view status, manage weekly edition schedule
-  ├─ /api/subscribe        POST — add email to subscribers table (with spam filtering)
-  └─ /api/unsubscribe      GET ?token=... — remove subscriber and show confirmation page
+  ├─ /api/subscribe        POST — add email to subscribers table (with spam filtering + MX validation)
+  ├─ /api/unsubscribe      GET ?token=... — remove subscriber and show confirmation page
+  └─ /api/sendgrid-webhook POST ?secret=... — receives bounce/spam/unsubscribe events from SendGrid,
+                             auto-removes affected subscribers from DB
 ```
 
 ## Provider abstractions
@@ -192,10 +196,11 @@ If all four fail, `published_at` defaults to today's date.
 ## Subscriber management
 
 - Subscribers are stored in the `subscribers` DB table (Supabase in prod, SQLite locally)
-- **Subscribe flow**: "Join Newsletter" button in nav bar opens modal → `POST /api/subscribe` → validates email, rejects disposable domains, rate-limits per IP (5/hour), honeypot field for bots → inserts with UUID unsubscribe token
+- **Subscribe flow**: "Join Newsletter" button in nav bar opens modal → `POST /api/subscribe` → validates email, checks MX records (rejects non-existent domains), rejects disposable domains, rate-limits per IP (5/hour), honeypot field for bots → inserts with UUID unsubscribe token
 - **Unsubscribe flow**: Each email has a per-recipient unsubscribe link → `GET /api/unsubscribe?token=UUID` → immediately deletes subscriber from DB → shows confirmation page
+- **SendGrid webhook**: `POST /api/sendgrid-webhook?secret=...` — auto-removes subscribers on hard bounce, spam report, or SendGrid unsubscribe event. Secret verified via `SENDGRID_WEBHOOK_SECRET` env var (set in Render). Configure in SendGrid → Settings → Mail Settings → Event Webhook.
 - **Fallback**: If no DB subscribers found, `email_sender.py` falls back to `email.subscribers` list in `config.yaml` (with no unsubscribe token)
-- **No double opt-in** — single opt-in with spam filtering (disposable domain blocklist + rate limiting + honeypot)
+- **No double opt-in** — single opt-in with spam filtering (disposable domain blocklist + MX validation + rate limiting + honeypot)
 
 ## Email digest
 
@@ -203,7 +208,8 @@ If all four fail, `published_at` defaults to today's date.
 - Logo loaded from `{{ website_base_url }}/logo.jpeg`
 - Variables passed: `articles`, `date`, `total_count`, `title`, `subscribe_url`, `unsubscribe_url`, `website_base_url`
 - `unsubscribe_url` is per-recipient (contains subscriber's UUID token)
-- Sends via Resend HTTP API (no SMTP). Requires `RESEND_API_KEY` env var.
+- Sends via SendGrid HTTP API (no SMTP). Requires `SENDGRID_API_KEY` env var.
+- Every email includes `List-Unsubscribe` and `List-Unsubscribe-Post` headers (required by Gmail/Yahoo for bulk senders).
 - `send_digest()` returns `True`/`False` — digest record only saved on success.
 - **Deferred when inbox is not empty**: If more PDFs are still in the inbox after a pipeline run, the email is skipped entirely (no partial digest saved). The final run (empty inbox) queries all of today's articles from the DB via `get_articles_since(today_start)` and sends one combined email covering every PDF processed that day.
 
@@ -215,6 +221,8 @@ If all four fail, `published_at` defaults to today's date.
 | Python pipeline | Background worker (watchdog) | Railway (CloudStoragePoller) |
 | Database | SQLite (`data/articles.db`) | Supabase PostgreSQL |
 | File storage | Local folders (`inbox/`, `processed/`) | Supabase Storage (bucket: `pdfs`) |
+| Email delivery | — | SendGrid API |
+| Email forwarding | — | ImprovMX (free) — `news@theamericanexpress.us` → `hfanewsletter@outlook.com` |
 
 ## Resending a failed email
 

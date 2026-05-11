@@ -36,15 +36,17 @@ Before running the app, gather credentials for two external services.
 
 > The free tier is sufficient for typical usage. If you see `429 Too Many Requests` errors, wait a few minutes or upgrade your plan.
 
-### 2. Resend API Key (required — sends the digest email)
+### 2. SendGrid API Key (required — sends the digest email)
 
-Resend is used to send email digests via HTTP API (no SMTP).
+SendGrid is used to send email digests via HTTP API (no SMTP).
 
-1. Go to [resend.com](https://resend.com) and create an account
-2. Add and verify your domain under **Domains** (add the DNS records Resend provides)
-3. Go to **API Keys** → **Create API Key** (Sending access, select your domain)
-4. Copy the key — paste it into `.env` as `RESEND_API_KEY`
+1. Go to [sendgrid.com](https://sendgrid.com) and create an account
+2. Go to **Settings → Sender Authentication → Authenticate Your Domain** and add the CNAME records SendGrid provides to your DNS provider
+3. Go to **Settings → API Keys → Create API Key** (Restricted Access: Mail Send = Full Access, Suppressions = Full Access)
+4. Copy the key — paste it into `.env` as `SENDGRID_API_KEY`
 5. Set `EMAIL_SENDER` in `.env` to an address on your verified domain (e.g. `news@yourdomain.com`)
+
+> **Email forwarding:** If `news@yourdomain.com` is not a real inbox, set up a free forwarder via [ImprovMX](https://improvmx.com) — add their MX records to your DNS and configure `news` → your personal email. This lets SendGrid verify the sender address and lets you receive any replies.
 
 ### 3. System Software
 
@@ -126,12 +128,14 @@ The startup script creates this file from `.env.example` automatically. Open it 
 # ── REQUIRED ─────────────────────────────────────────────────
 LLM_API_KEY=paste_your_gemini_api_key_here
 EMAIL_SENDER=news@yourdomain.com
-RESEND_API_KEY=re_your_resend_api_key_here
+SENDGRID_API_KEY=SG.your_sendgrid_api_key_here
 
 # ── REQUIRED FOR PRODUCTION ───────────────────────────────────
 # Generate a strong password: openssl rand -base64 20
 # The app blocks login after 5 failed attempts per 15 minutes.
 ADMIN_PASSWORD=CHANGE_THIS_TO_A_STRONG_RANDOM_PASSWORD
+# Generate with: openssl rand -hex 32
+SENDGRID_WEBHOOK_SECRET=your_webhook_secret_here
 
 # ── OPTIONAL (defaults work for local dev) ───────────────────
 WEBSITE_BASE_URL=http://localhost:3000   # change to your domain in production
@@ -145,8 +149,9 @@ STORAGE_PROVIDER=local
 | Variable | Required | Description |
 |---|---|---|
 | `LLM_API_KEY` | **Yes** | Your Gemini API key from Google AI Studio |
-| `EMAIL_SENDER` | **Yes** | Sender address on your verified Resend domain (e.g. `news@yourdomain.com`) |
-| `RESEND_API_KEY` | **Yes** | Resend API key (starts with `re_`) |
+| `EMAIL_SENDER` | **Yes** | Sender address on your verified SendGrid domain (e.g. `news@yourdomain.com`) |
+| `SENDGRID_API_KEY` | **Yes** | SendGrid API key (starts with `SG.`) |
+| `SENDGRID_WEBHOOK_SECRET` | Production only | Secret token appended to the webhook URL. Generate with `openssl rand -hex 32`. Add to Render env vars and SendGrid webhook URL |
 | `ADMIN_PASSWORD` | **Yes** | Password for `/admin`. Must be 20+ random characters in production. Generate with `openssl rand -base64 20` |
 | `WEBSITE_BASE_URL` | No | Base URL for "Read Full Article" links in the email. Defaults to `http://localhost:3000` |
 | `SUPABASE_URL` | Production only | Supabase project URL. Leave blank for local dev (SQLite is used automatically) |
@@ -171,8 +176,8 @@ email:
 
 It may be tempting to jumpstart the subscriber count by importing a purchased or scraped email list. **This will backfire and can permanently damage the product.** Here is why:
 
-**1. Resend will suspend the account.**
-Resend (our email provider) monitors bounce rates and spam complaint rates in real time. Purchased lists typically produce 5–15% bounces and 1–3% spam complaints. Resend's acceptable thresholds are under 2% bounces and under 0.1% complaints. A single bulk send to a cold list is enough to trigger an account review or immediate suspension — cutting off email delivery to *all* subscribers, including legitimate ones.
+**1. SendGrid will suspend the account.**
+SendGrid (our email provider) monitors bounce rates and spam complaint rates in real time. Purchased lists typically produce 5–15% bounces and 1–3% spam complaints. SendGrid's acceptable thresholds are under 2% bounces and under 0.1% complaints. A single bulk send to a cold list is enough to trigger an account review or immediate suspension — cutting off email delivery to *all* subscribers, including legitimate ones.
 
 **2. The domain reputation will be destroyed.**
 `theamericanexpress.us` is a new domain with no sending history. Gmail, Outlook, and Yahoo are especially suspicious of new domains sending bulk mail. If the first large send generates spam complaints, the domain gets flagged. Once that happens, even emails to people who genuinely signed up will land in spam. Rebuilding domain reputation takes months and is not guaranteed.
@@ -424,9 +429,9 @@ The model name in `config/config.yaml` may be outdated. Try `gemini-2.5-flash-00
 You have hit the API rate limit. The pipeline retries automatically (up to 5 times with backoff up to 2 minutes). If it keeps failing, wait a few minutes and try again, or upgrade your Google AI plan.
 
 ### Email not sending
-- Confirm `RESEND_API_KEY` is set and valid (starts with `re_`)
-- Confirm `EMAIL_SENDER` is an address on your verified Resend domain
-- Check `logs/app.log` for the exact error from Resend API
+- Confirm `SENDGRID_API_KEY` is set and valid (starts with `SG.`)
+- Confirm `EMAIL_SENDER` is an address on your verified SendGrid domain
+- Check `logs/app.log` for the exact error from SendGrid API
 
 ### PDF moved to `processed/` but no email received
 Check `logs/app.log`. Common causes:
@@ -484,7 +489,7 @@ src/pipeline.py             orchestrates the full flow
   ├─ src/summarizer.py           LLM → 4-5 sentence email summary per article
   ├─ src/providers/db/           SQLite (local) or Supabase (production)
   ├─ src/digest_store.py         saves digest batch for --resend-last
-  └─ src/email_sender.py         Resend API → templates/email_digest.html (Jinja2)
+  └─ src/email_sender.py         SendGrid API → templates/email_digest.html (Jinja2)
        │
        ▼
 processed/                  ← PDFs moved here after processing
@@ -509,7 +514,8 @@ src/newspaper_generator.py  Jinja2 + WeasyPrint → data/weekly_editions/edition
 | PDF pipeline worker | Python process | Railway |
 | Database | SQLite (`data/articles.db`) | Supabase PostgreSQL |
 | File storage | Local `inbox/` / `processed/` | Supabase Storage |
-| Email delivery | Resend API | Resend API |
+| Email delivery | SendGrid API | SendGrid API |
+| Email forwarding | — | ImprovMX (free) |
 | Domain | localhost | theamericanexpress.us (GoDaddy) |
 
 ### Production costs
@@ -519,10 +525,11 @@ src/newspaper_generator.py  Jinja2 + WeasyPrint → data/weekly_editions/edition
 | **Render** | Starter | $7/month | Hosts the Next.js website (always-on, no cold starts) |
 | **Railway** | Hobby | ~$5/month | Runs the Python pipeline worker 24/7 |
 | **Supabase** | Pro | $25/month | PostgreSQL database + PDF file storage (5 GB upload limit) |
-| **Resend** | Pro | $20/month | Email delivery (50K emails/month included, overage ~$1.50/1K) |
+| **SendGrid** | Essentials 50K | $19.95/month | Email delivery (50K emails/month included) |
+| **ImprovMX** | Free | $0 | Email forwarding for `news@yourdomain.com` → personal inbox |
 | **GoDaddy** | — | ~$12/year | Domain registration (theamericanexpress.us) |
 | **Google AI Studio** | Free/Pay-as-you-go | Free tier available | Gemini API for article extraction + embeddings |
-| | | **~$57/month** | **Total estimated monthly cost** |
+| | | | | **~$57/month** | **Total estimated monthly cost** |
 
 ### Production setup
 
@@ -532,8 +539,8 @@ src/newspaper_generator.py  Jinja2 + WeasyPrint → data/weekly_editions/edition
 | Variable | Value |
 |---|---|
 | `LLM_API_KEY` | Gemini API key |
-| `EMAIL_SENDER` | Resend sender address (e.g. `news@theamericanexpress.us`) |
-| `RESEND_API_KEY` | Resend API key (starts with `re_`) |
+| `EMAIL_SENDER` | SendGrid sender address (e.g. `news@theamericanexpress.us`) |
+| `SENDGRID_API_KEY` | SendGrid API key (starts with `SG.`) |
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_SERVICE_KEY` | Supabase **service role** key (not the anon key) |
 | `STORAGE_PROVIDER` | `supabase` |
