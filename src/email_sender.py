@@ -52,11 +52,7 @@ class EmailSender:
         Send the news digest email to all subscribers.
         Returns True if at least one email was sent successfully.
         """
-        unique_articles = sorted(
-            [a for a in articles if not a.is_duplicate],
-            key=lambda a: a.importance_score or 0,
-            reverse=True,
-        )[:12]
+        unique_articles = [a for a in articles if not a.is_duplicate]
         if not unique_articles:
             logger.info("No unique articles to send in digest.")
             return False
@@ -100,11 +96,9 @@ class EmailSender:
 
     def _render_template(self, articles: List[ProcessedArticle], unsubscribe_url: str) -> str:
         template = self.jinja_env.get_template("email_digest.html")
-        now = datetime.now()
         return template.render(
             articles=articles,
-            date=now.strftime("%B %d, %Y"),
-            date_iso=now.strftime("%Y-%m-%d"),
+            date=datetime.now().strftime("%B %d, %Y"),
             total_count=len(articles),
             title=self.config.title,
             subscribe_url=self.config.subscribe_url,
