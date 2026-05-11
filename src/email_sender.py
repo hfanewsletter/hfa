@@ -81,7 +81,7 @@ class EmailSender:
                     unsubscribe_url = self.config.unsubscribe_url
 
                 html_body = self._render_template(unique_articles, unsubscribe_url)
-                self._send_email(email, subject, html_body)
+                self._send_email(email, subject, html_body, unsubscribe_url)
                 sent_count += 1
                 logger.info("Digest sent to %s (%d articles)", email, len(unique_articles))
             except Exception as e:
@@ -106,12 +106,16 @@ class EmailSender:
             website_base_url=self.config.website_base_url,
         )
 
-    def _send_email(self, recipient: str, subject: str, html_body: str) -> None:
+    def _send_email(self, recipient: str, subject: str, html_body: str, unsubscribe_url: str = "") -> None:
         payload = {
             "personalizations": [{"to": [{"email": recipient}]}],
             "from": {"email": self.config.sender, "name": self.config.title},
             "subject": subject,
             "content": [{"type": "text/html", "value": html_body}],
+            "headers": {
+                "List-Unsubscribe": f"<{unsubscribe_url}>",
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            },
         }
         response = httpx.post(
             SENDGRID_API_URL,

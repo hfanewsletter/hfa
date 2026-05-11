@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'crypto'
+import { promises as dns } from 'dns'
 
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000 // 1 hour
 const MAX_SUBSCRIBES_PER_IP = 5
@@ -34,9 +35,17 @@ function isRateLimited(ip: string): boolean {
 }
 
 function isValidEmail(email: string): boolean {
-  // Basic format check — no need for a full RFC 5322 parser
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
   return re.test(email) && email.length <= 254
+}
+
+async function hasMXRecords(domain: string): Promise<boolean> {
+  try {
+    const records = await dns.resolveMx(domain)
+    return records.length > 0
+  } catch {
+    return false
+  }
 }
 
 function getSupabaseClient() {
@@ -85,6 +94,12 @@ export async function POST(req: NextRequest) {
   const domain = email.split('@')[1]
   if (DISPOSABLE_DOMAINS.has(domain)) {
     return NextResponse.json({ error: 'Please use a permanent email address.' }, { status: 400 })
+  }
+
+  // Reject domains with no MX records (can't receive email)
+  const validDomain = await hasMXRecords(domain)
+  if (!validDomain) {
+    return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 })
   }
 
   const supabase = getSupabaseClient()
