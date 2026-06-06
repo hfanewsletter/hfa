@@ -66,7 +66,7 @@ class EmailSender:
             logger.warning("No subscribers found — skipping email digest.")
             return False
 
-        subject = f"News Digest — {datetime.now().strftime('%B %d, %Y')}"
+        subject = self._build_subject(unique_articles)
 
         sent_count = 0
         for email, unsubscribe_token in subscribers:
@@ -93,6 +93,28 @@ class EmailSender:
             logger.info("Email digest delivered to %d/%d subscribers.", sent_count, len(subscribers))
 
         return sent_count > 0
+
+    # Max subject length before we truncate the headline (keeps Gmail from clipping mid-word)
+    SUBJECT_MAX_LEN = 78
+
+    def _build_subject(self, articles: List[ProcessedArticle]) -> str:
+        """
+        Lead with the day's top story. Prefix "Breaking:" only when that story is
+        a genuine breaking story (importance >= 9); otherwise use "Today:".
+        Falls back to the old date-based subject if no headline is available.
+        """
+        top = max(articles, key=lambda a: a.importance_score, default=None)
+        headline = (top.article.title.strip() if top and top.article.title else "")
+
+        if not headline:
+            return f"News Digest — {datetime.now().strftime('%B %d, %Y')}"
+
+        prefix = "Breaking" if top.importance_score >= 9 else "Today"
+        room = self.SUBJECT_MAX_LEN - len(prefix) - 2  # 2 = ": "
+        if len(headline) > room:
+            headline = headline[: room - 1].rstrip() + "…"
+
+        return f"{prefix}: {headline}"
 
     def _render_template(self, articles: List[ProcessedArticle], unsubscribe_url: str) -> str:
         template = self.jinja_env.get_template("email_digest.html")
