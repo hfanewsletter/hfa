@@ -10,7 +10,7 @@ from src.providers.storage import get_storage_provider
 from src.providers.db import get_db_provider
 from src.providers.db.base import ArticleRecord, PDFRecord
 from src.article_extractor import ArticleExtractor
-from src.pdf_processor import PDFProcessor
+from src.pdf_processor import PDFProcessor, UnprocessablePDFError
 from src.rewriter import Rewriter, generate_slug
 from src.deduplicator import Deduplicator
 from src.summarizer import Summarizer
@@ -110,7 +110,8 @@ class Pipeline:
         pdf_records: List[PDFRecord] = []
         pdf_newspaper_dates: Dict[str, date] = {}  # pdf_path → detected newspaper date
         stale_pdf_paths: Set[str] = set()          # PDFs too old to include in email
-        failed_pdfs: Set[str] = set()              # PDFs that failed extraction
+        failed_pdfs: Set[str] = set()              # PDFs that failed extraction (kept in inbox for retry)
+        unprocessable_pdfs: Set[str] = set()       # permanently broken PDFs (moved out of inbox)
 
         for pdf_idx, pdf_path in enumerate(pdf_paths, 1):
             filename = os.path.basename(pdf_path)
@@ -162,6 +163,18 @@ class Pipeline:
                         a.category = "Editorial"
                 all_articles.extend(articles)
 
+            except UnprocessablePDFError as e:
+                # Permanent failure (encrypted/password-protected/corrupt). Retrying
+                # will never succeed, so move it out of the inbox into failed/ to
+                # stop the watcher from looping on it every poll cycle.
+                logger.error("Unprocessable PDF '%s': %s — moving to failed/", filename, e)
+                unprocessable_pdfs.add(pdf_path)
+                if pdf_record_id is not None:
+                    try:
+                        self.db.update_pdf_status(pdf_record_id, "failed", 0)
+                    except Exception:
+                        pass
+
             except Exception as e:
                 logger.error("Extraction failed for '%s': %s", filename, e, exc_info=True)
                 failed_pdfs.add(pdf_path)
@@ -173,7 +186,8 @@ class Pipeline:
 
         if not all_articles:
             logger.info("No articles extracted from any PDF.")
-            self._move_and_finalize(pdf_paths, pdf_records, article_count=0, failed_pdfs=failed_pdfs)
+            self._move_and_finalize(pdf_paths, pdf_records, article_count=0,
+                                     failed_pdfs=failed_pdfs, unprocessable_pdfs=unprocessable_pdfs)
             return
 
         logger.info("Total articles extracted: %d across %d PDF(s)", len(all_articles), len(pdf_paths))
@@ -400,7 +414,8 @@ class Pipeline:
                 self.digest_store.save_digest(processed)
 
         # --- Stage 9: Move PDFs + update records ---
-        self._move_and_finalize(pdf_paths, pdf_records, article_count=unique_count, failed_pdfs=failed_pdfs)
+        self._move_and_finalize(pdf_paths, pdf_records, article_count=unique_count,
+                                 failed_pdfs=failed_pdfs, unprocessable_pdfs=unprocessable_pdfs)
 
         elapsed = time.time() - start_time
         mins, secs = divmod(int(elapsed), 60)
@@ -434,13 +449,24 @@ class Pipeline:
         pdf_records: List[tuple],
         article_count: int,
         failed_pdfs: set = None,
+        unprocessable_pdfs: set = None,
     ) -> None:
         failed_pdfs = failed_pdfs or set()
+        unprocessable_pdfs = unprocessable_pdfs or set()
         record_map = {path: (rid, fname) for path, rid, fname in pdf_records}
 
         for pdf_path in pdf_paths:
+            if pdf_path in unprocessable_pdfs:
+                # Permanently broken (encrypted/corrupt) — move out of inbox into
+                # failed/ so the watcher stops retrying it on every poll cycle.
+                try:
+                    self.storage.move_to_failed(pdf_path)
+                except Exception as e:
+                    logger.error("Could not move '%s' to failed: %s", pdf_path, e)
+                continue
+
             if pdf_path in failed_pdfs:
-                # Already marked 'failed' in Stage 1 — leave the file in inbox for manual retry
+                # Transient failure — leave the file in inbox for automatic retry
                 continue
 
             try:

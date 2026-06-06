@@ -59,6 +59,22 @@ class SupabaseStorageProvider(StorageProvider):
                 logger.error("Could not move or delete %s: %s", file_path, e2)
         return dest
 
+    def move_to_failed(self, file_path: str) -> str:
+        """Move a storage path from inbox/ to failed/ (unprocessable PDFs)."""
+        filename = os.path.basename(file_path)
+        dest = f"failed/{filename}"
+        try:
+            self.client.storage.from_(BUCKET).move(file_path, dest)
+            logger.info("Moved %s → %s (unprocessable)", file_path, dest)
+        except Exception:
+            # Move fails if destination already exists — delete the inbox copy instead
+            try:
+                self.client.storage.from_(BUCKET).remove([file_path])
+                logger.info("Deleted %s from inbox (already in failed/)", file_path)
+            except Exception as e2:
+                logger.error("Could not move or delete %s: %s", file_path, e2)
+        return dest
+
     def get_file_url(self, file_path: str) -> str:
         """Return a 1-hour signed URL for the given storage path."""
         try:

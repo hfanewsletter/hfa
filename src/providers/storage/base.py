@@ -27,6 +27,15 @@ class StorageProvider(ABC):
         """
 
     @abstractmethod
+    def move_to_failed(self, file_path: str) -> str:
+        """
+        Move the file from the inbox to a 'failed' location, used for PDFs that
+        can never be processed (password-protected/encrypted/corrupt). Keeps them
+        out of the inbox so the watcher stops retrying them, and separate from
+        processed/ so they can be inspected. Returns the new path/key.
+        """
+
+    @abstractmethod
     def get_file_url(self, file_path: str) -> str:
         """
         Return a URL or URI that a user can click to open the file.

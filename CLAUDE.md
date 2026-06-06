@@ -134,7 +134,7 @@ web/ (Next.js website — npm run dev)
 **Storage providers** (`src/providers/storage/`):
 - `base.py` — `StorageProvider` ABC: `list_new_files()`, `list_editorial_files()`, `read_file()`, `move_to_processed()`, `get_file_url()`
 - `local.py` — local filesystem (default for dev)
-- `supabase_storage.py` — Supabase Storage (production). Bucket `pdfs` with folders `inbox/`, `editorial_inbox/`, `processed/`. Requires `SUPABASE_URL` + `SUPABASE_SERVICE_KEY`.
+- `supabase_storage.py` — Supabase Storage (production). Bucket `pdfs` with folders `inbox/`, `editorial_inbox/`, `processed/`, `failed/`. Requires `SUPABASE_URL` + `SUPABASE_SERVICE_KEY`.
 - `__init__.py` — `get_storage_provider(name, config)` factory. Set `STORAGE_PROVIDER=supabase` for production.
 
 **DB providers** (`src/providers/db/`):
@@ -162,6 +162,7 @@ Schema: `scripts/supabase_schema.sql` (migration: `scripts/add_subscribers_table
 ## Pipeline safeguards
 
 - **Skip already-processed PDFs**: Before extraction, pipeline checks DB for filenames with status "processed". Prevents re-processing loop when files stay in inbox.
+- **Move unprocessable PDFs out of inbox**: Password-protected/encrypted/corrupt PDFs raise `UnprocessablePDFError` (detected in `pdf_processor.py` via `needs_pass` + an "encrypted/closed" ValueError safety net). The pipeline moves these to `failed/` (via `storage.move_to_failed()`) instead of leaving them in the inbox, so the watcher stops looping on the same broken file every poll cycle. Transient failures (rate limit/network) are still left in inbox for automatic retry.
 - **Move-or-delete from inbox**: After processing, `move_to_processed()` moves the file. If move fails (destination exists), deletes the inbox copy instead.
 - **PDF record dedup**: `save_pdf_record()` finds and updates existing pending/processing records instead of always inserting new ones.
 - **Email-before-digest**: Digest record only saved to DB after at least one email is delivered successfully.

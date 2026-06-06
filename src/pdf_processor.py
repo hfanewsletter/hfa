@@ -9,6 +9,17 @@ logger = logging.getLogger(__name__)
 TEXT_DENSITY_THRESHOLD = 100
 
 
+class UnprocessablePDFError(Exception):
+    """
+    Raised when a PDF can never be processed no matter how many times we retry:
+    password-protected / encrypted, or structurally corrupt.
+
+    The pipeline treats this differently from a transient failure (rate limit,
+    network error): the file is moved out of the inbox into failed/ so it stops
+    looping the watcher on every poll cycle.
+    """
+
+
 class PDFProcessor:
     """
     Extracts content from PDF files.
@@ -26,7 +37,23 @@ class PDFProcessor:
             "source_pdf": str
         }
         """
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        except Exception as e:
+            # fitz couldn't even open the file — it's corrupt/not a real PDF.
+            raise UnprocessablePDFError(
+                f"Cannot open PDF '{source_pdf}': {e}"
+            ) from e
+
+        # Password-protected PDFs can be opened but not read. `needs_pass` means a
+        # real password is required (vs. empty-password "encryption" that fitz
+        # auto-decrypts, which is common and perfectly readable). Fail fast with a
+        # clear, permanent error instead of crashing mid-iteration.
+        if getattr(doc, "needs_pass", False):
+            doc.close()
+            raise UnprocessablePDFError(
+                f"PDF '{source_pdf}' is password-protected — cannot process."
+            )
 
         try:
             if self._is_image_based(doc):
@@ -37,6 +64,15 @@ class PDFProcessor:
                 logger.info("Detected text-based PDF: %s (%d pages)", source_pdf, len(doc))
                 pages = self._extract_as_text(doc)
                 return {"type": "text", "pages": pages, "source_pdf": source_pdf}
+        except ValueError as e:
+            # Safety net: pymupdf raises "document closed or encrypted" while
+            # iterating pages of an encrypted/corrupt PDF that slipped past the
+            # needs_pass check above. Treat as permanent so it leaves the inbox.
+            if "encrypted" in str(e).lower() or "closed" in str(e).lower():
+                raise UnprocessablePDFError(
+                    f"PDF '{source_pdf}' is encrypted or corrupt: {e}"
+                ) from e
+            raise
         finally:
             doc.close()
 

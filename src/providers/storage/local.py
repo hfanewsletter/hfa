@@ -13,8 +13,10 @@ class LocalStorageProvider(StorageProvider):
     def __init__(self, config: dict):
         self.inbox_path = os.path.abspath(config["inbox_path"])
         self.processed_path = os.path.abspath(config["processed_path"])
+        self.failed_path = os.path.join(os.path.dirname(self.processed_path), "failed")
         os.makedirs(self.inbox_path, exist_ok=True)
         os.makedirs(self.processed_path, exist_ok=True)
+        os.makedirs(self.failed_path, exist_ok=True)
 
     def list_new_files(self) -> List[str]:
         files = []
@@ -37,6 +39,17 @@ class LocalStorageProvider(StorageProvider):
             dest = os.path.join(self.processed_path, f"{base}_{int(time.time())}{ext}")
         shutil.move(file_path, dest)
         logger.info("Moved %s → %s", file_path, dest)
+        return dest
+
+    def move_to_failed(self, file_path: str) -> str:
+        filename = os.path.basename(file_path)
+        dest = os.path.join(self.failed_path, filename)
+        if os.path.exists(dest):
+            base, ext = os.path.splitext(filename)
+            import time
+            dest = os.path.join(self.failed_path, f"{base}_{int(time.time())}{ext}")
+        shutil.move(file_path, dest)
+        logger.info("Moved %s → %s (unprocessable)", file_path, dest)
         return dest
 
     def get_file_url(self, file_path: str) -> str:
