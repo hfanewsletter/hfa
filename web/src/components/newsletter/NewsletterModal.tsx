@@ -13,7 +13,7 @@ export default function NewsletterModal() {
         onClick={() => setOpen(true)}
         className="inline-block bg-accent hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded transition-colors"
       >
-        Join Newsletter
+        Subscribe
       </button>
 
       {open && (

@@ -60,7 +60,7 @@ export default function NewsletterForm({ onSuccess }: { onSuccess?: () => void }
         className="w-full bg-accent hover:bg-red-700 disabled:opacity-60 text-white text-base
                    font-bold py-3 rounded transition-colors"
       >
-        {status === 'loading' ? 'Subscribing...' : 'Join Newsletter'}
+        {status === 'loading' ? 'Subscribing...' : 'Subscribe'}
       </button>
       {status === 'error' && (
         <p className="text-xs text-red-300">{message}</p>
