@@ -24,11 +24,17 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold uppercase tracking-wider text-xs text-blue-300 mb-3">Navigate</h4>
             <ul className="space-y-1.5 text-sm">
-              {['Home', 'Newsletter'].map(l => (
-                <li key={l}>
-                  <Link href={l === 'Home' ? '/' : `/${l.toLowerCase()}`}
+              {[
+                ['Home', '/'],
+                ['About', '/about'],
+                ['Newsletter', '/newsletter'],
+                ['Contact', '/contact'],
+                ['Privacy Policy', '/privacy'],
+              ].map(([label, href]) => (
+                <li key={href}>
+                  <Link href={href}
                     className="text-blue-200 hover:text-white transition-colors">
-                    {l}
+                    {label}
                   </Link>
                 </li>
               ))}

@@ -8,6 +8,8 @@ import { getDB } from '@/lib/db'
 import { SITE_URL, SITE_NAME } from '@/lib/seo'
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID
+// AdSense client, format "ca-pub-XXXXXXXXXXXXXXXX". Set in Render after applying.
+const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT
 
 const DESCRIPTION =
   'Your trusted source for balanced, unbiased news from across the spectrum.'
@@ -21,6 +23,8 @@ export const metadata: Metadata = {
   verification: {
     google: 'rATg6PSbDGOucJpM2bbCFIfbYrA5jYSAmBwaivvWx5E',
   },
+  // AdSense site-verification meta tag (rendered in <head> when the env var is set)
+  ...(ADSENSE_CLIENT ? { other: { 'google-adsense-account': ADSENSE_CLIENT } } : {}),
   icons: {
     icon: '/logo.jpeg',
     apple: '/logo.jpeg',
@@ -88,6 +92,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               `}
             </Script>
           </>
+        )}
+        {/* Google AdSense — only loads when NEXT_PUBLIC_ADSENSE_CLIENT is set in env */}
+        {ADSENSE_CLIENT && (
+          <Script
+            id="adsense"
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+            crossOrigin="anonymous"
+            strategy="afterInteractive"
+          />
         )}
       </body>
     </html>
