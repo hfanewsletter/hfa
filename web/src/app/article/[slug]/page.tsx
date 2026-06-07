@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getDB } from '@/lib/db'
 import { categoryColor, formatDate } from '@/lib/utils'
+import { absoluteUrl, SITE_NAME } from '@/lib/seo'
 import ShareButtons from '@/components/article/ShareButtons'
 
 interface Props {
@@ -13,9 +14,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const article = await getDB().getArticleBySlug(slug)
   if (!article) return {}
+
+  const url = absoluteUrl(`/article/${article.slug}`)
+  const images = article.image_url ? [article.image_url] : ['/logo.jpeg']
+
   return {
     title: article.title,
     description: article.summary,
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'article',
+      title: article.title,
+      description: article.summary,
+      url,
+      siteName: SITE_NAME,
+      publishedTime: article.published_at,
+      section: article.category,
+      images,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: article.title,
+      description: article.summary,
+      images,
+    },
   }
 }
 
@@ -32,8 +54,31 @@ export default async function ArticlePage({ params }: Props) {
     .map(p => p.trim())
     .filter(Boolean)
 
+  // NewsArticle structured data — required for rich results & Google News eligibility
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: article.title,
+    description: article.summary,
+    datePublished: article.published_at,
+    dateModified: article.published_at,
+    articleSection: article.category,
+    mainEntityOfPage: { '@type': 'WebPage', '@id': absoluteUrl(`/article/${article.slug}`) },
+    image: [article.image_url || absoluteUrl('/logo.jpeg')],
+    author: { '@type': 'Organization', name: SITE_NAME },
+    publisher: {
+      '@type': 'Organization',
+      name: SITE_NAME,
+      logo: { '@type': 'ImageObject', url: absoluteUrl('/logo.jpeg') },
+    },
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
         {/* Article */}
