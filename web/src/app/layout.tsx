@@ -8,8 +8,8 @@ import { getDB } from '@/lib/db'
 import { SITE_URL, SITE_NAME } from '@/lib/seo'
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID
-// AdSense client, format "ca-pub-XXXXXXXXXXXXXXXX". Set in Render after applying.
-const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT
+// AdSense client, format "ca-pub-XXXXXXXXXXXXXXXX". Public value; env var overrides.
+const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT || 'ca-pub-2301673756919908'
 
 const DESCRIPTION =
   'Your trusted source for balanced, unbiased news from across the spectrum.'
