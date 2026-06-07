@@ -1,6 +1,6 @@
 import logging
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Dict, Set
 
 from src.config_loader import AppConfig
@@ -355,10 +355,21 @@ class Pipeline:
         elif unique_count > 0:
             # Inbox is empty — build the email from ALL of today's articles (not just
             # this run's batch), so a single digest covers every PDF uploaded today.
-            from datetime import date as _date, time as _time
-            today_start = datetime.combine(_date.today(), _time.min, tzinfo=timezone.utc)
+            # Use America/New_York (EST/EDT) only to pick WHICH calendar date is
+            # "today" (matching the website homepage), but build the bounds at UTC
+            # midnight because published_at is stored as a date at 00:00:00Z. The
+            # `until` bound keeps future-dated articles (from a date-detection error)
+            # out of the digest so they can't dominate the subject line.
+            from zoneinfo import ZoneInfo
+            today_est = datetime.now(ZoneInfo("America/New_York")).date()
+            today_start = datetime(
+                today_est.year, today_est.month, today_est.day, tzinfo=timezone.utc
+            )
+            today_end = today_start + timedelta(days=1)
             try:
-                todays_records = self.db.get_articles_since(today_start, limit=200)
+                todays_records = self.db.get_articles_since(
+                    today_start, limit=200, until=today_end
+                )
             except Exception as e:
                 logger.warning("Could not load today's articles from DB for digest: %s", e)
                 todays_records = []

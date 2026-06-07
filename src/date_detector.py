@@ -4,7 +4,7 @@ Used by the pipeline to correctly date-stamp articles and identify stale newspap
 """
 import re
 import logging
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -150,7 +150,14 @@ def _parse_pdf_first_page_text(pdf_bytes: bytes) -> Optional[date]:
 def _make_date(year: int, month: int, day: int) -> Optional[date]:
     try:
         if 2000 <= year <= 2100 and 1 <= month <= 12 and 1 <= day <= 31:
-            return date(year, month, day)
+            parsed = date(year, month, day)
+            # A newspaper can't be dated in the future — reject so the detection
+            # chain falls through to the next method (and ultimately today's date).
+            # Allow 1 day of slack for timezone differences at the day boundary.
+            if parsed > date.today() + timedelta(days=1):
+                logger.warning("Ignoring future newspaper date %s (parsed from PDF)", parsed)
+                return None
+            return parsed
     except ValueError:
         pass
     return None

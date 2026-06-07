@@ -362,12 +362,22 @@ class SQLiteDBProvider(DBProvider):
     # Weekly editions
     # ------------------------------------------------------------------
 
-    def get_articles_since(self, since: datetime, limit: int = 60) -> List[ArticleRecord]:
+    def get_articles_since(
+        self, since: datetime, limit: int = 60, until: Optional[datetime] = None
+    ) -> List[ArticleRecord]:
         conn = self._connect()
-        rows = conn.execute(
-            "SELECT * FROM articles WHERE published_at >= ? ORDER BY importance_score DESC, published_at DESC LIMIT ?",
-            (since.isoformat(), limit),
-        ).fetchall()
+        if until is not None:
+            rows = conn.execute(
+                "SELECT * FROM articles WHERE published_at >= ? AND published_at < ? "
+                "ORDER BY importance_score DESC, published_at DESC LIMIT ?",
+                (since.isoformat(), until.isoformat(), limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM articles WHERE published_at >= ? "
+                "ORDER BY importance_score DESC, published_at DESC LIMIT ?",
+                (since.isoformat(), limit),
+            ).fetchall()
         conn.close()
         return [self._row_to_article(r) for r in rows]
 

@@ -107,8 +107,15 @@ class DBProvider(ABC):
     # ------------------------------------------------------------------
 
     @abstractmethod
-    def get_articles_since(self, since: datetime, limit: int = 60) -> List[ArticleRecord]:
-        """Fetch articles published on or after `since`, newest first."""
+    def get_articles_since(
+        self, since: datetime, limit: int = 60, until: Optional[datetime] = None
+    ) -> List[ArticleRecord]:
+        """
+        Fetch articles published on or after `since`, newest first.
+        If `until` is given, only articles published strictly before `until` are
+        returned (used to bound the daily digest to a single day and exclude
+        future-dated articles from date-detection errors).
+        """
 
     @abstractmethod
     def create_weekly_edition_job(self, edition_date: str) -> int:

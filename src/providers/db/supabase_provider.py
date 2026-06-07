@@ -258,11 +258,18 @@ class SupabaseDBProvider(DBProvider):
     # Weekly editions
     # ------------------------------------------------------------------
 
-    def get_articles_since(self, since: datetime, limit: int = 60) -> List[ArticleRecord]:
-        response = (
+    def get_articles_since(
+        self, since: datetime, limit: int = 60, until: Optional[datetime] = None
+    ) -> List[ArticleRecord]:
+        query = (
             self.client.table("articles")
             .select("*")
             .gte("published_at", since.isoformat())
+        )
+        if until is not None:
+            query = query.lt("published_at", until.isoformat())
+        response = (
+            query
             .order("importance_score", desc=True)
             .order("published_at", desc=True)
             .limit(limit)
