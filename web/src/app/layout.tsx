@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   applicationName: SITE_NAME,
   alternates: { canonical: '/' },
+  verification: {
+    google: 'rATg6PSbDGOucJpM2bbCFIfbYrA5jYSAmBwaivvWx5E',
+  },
   icons: {
     icon: '/logo.jpeg',
     apple: '/logo.jpeg',
