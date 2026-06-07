@@ -1,13 +1,14 @@
 /**
  * Canonical site URL + small SEO helpers.
  *
- * Set NEXT_PUBLIC_SITE_URL in Render (e.g. https://theamericanexpress.us, no
- * trailing slash). Falls back to WEBSITE_BASE_URL (already used elsewhere) and
- * finally the known production domain.
+ * Always the public production domain so sitemap/canonical/OG URLs are correct.
+ * We deliberately do NOT fall back to WEBSITE_BASE_URL: on Render that var is the
+ * internal *.onrender.com URL, which must never appear in sitemaps or canonical
+ * tags (it caused "URL not allowed" in Search Console). Override only via an
+ * explicit NEXT_PUBLIC_SITE_URL if the domain ever changes.
  */
 export const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.WEBSITE_BASE_URL ||
   'https://theamericanexpress.us'
 ).replace(/\/$/, '')
 
