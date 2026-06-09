@@ -325,6 +325,7 @@ Editorial articles are excluded from the homepage scoring and appear only on `/e
 | URL | What you see |
 |---|---|
 | `/` | Homepage — today's articles only: breaking banner, hero, featured grid, latest sidebar |
+| `/subscribe` | **Shareable newsletter signup landing page** (see below) — intentionally NOT in the site nav/footer |
 | `/editorial` | Today's editorial articles (link only visible when editorials exist) |
 | `/section/politics` | All articles in a category (Editorial excluded from category nav) |
 | `/article/some-slug` | Full rewritten article with share buttons (X, Facebook, WhatsApp, copy link) |
@@ -334,6 +335,27 @@ Editorial articles are excluded from the homepage scoring and appear only on `/e
 | `/admin` | Admin panel (password protected) |
 | `/api/subscribe` | POST — subscribe email to newsletter (with spam filtering) |
 | `/api/unsubscribe` | GET `?token=UUID` — unsubscribe and show confirmation page |
+
+### Shareable subscribe link (`/subscribe`)
+
+A standalone, mobile-first newsletter signup landing page designed to be **shared
+directly** on WhatsApp, Facebook, SMS, Instagram bios, QR codes, etc. — so people
+can subscribe without first browsing the website.
+
+- **Public URL to share:** `https://theamericanexpress.us/subscribe`
+- **Deliberately NOT linked** in the site nav or footer — it's a destination for
+  external/shared traffic, not a browsable site section. Normal site visitors keep
+  using the existing "Subscribe" button/modal.
+- Single-purpose page: masthead → value prop → live subscriber count (social proof)
+  → one email field → submit. Reuses `POST /api/subscribe` (MX validation, rate
+  limiting, honeypot all intact).
+- **Link-preview ready:** has Open Graph / Twitter meta tags, so pasting the URL in
+  WhatsApp/Facebook shows a proper preview card (logo + title + tagline).
+- **Built-in viral loop:** after signing up, the success state shows "Share on
+  WhatsApp" + "Copy link" buttons pointing back at `/subscribe`.
+- Included in `sitemap.xml` (can capture organic search signups) but hidden from
+  on-site navigation.
+- Source: `web/src/app/subscribe/page.tsx` + `web/src/app/subscribe/SubscribeForm.tsx`.
 
 ### Admin Panel
 
