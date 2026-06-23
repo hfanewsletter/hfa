@@ -157,10 +157,18 @@ class Pipeline:
                 # Free PDF bytes immediately — they can be hundreds of MB for image PDFs
                 del pdf_bytes
                 logger.info("Extracted %d articles from '%s'", len(articles), filename)
-                # Force category for editorial PDFs
                 if pdf_path in editorial_pdf_set:
+                    # Editorial PDFs are intentional editorials — force the category.
                     for a in articles:
                         a.category = "Editorial"
+                else:
+                    # Guard: the "Editorial" category is reserved for content we
+                    # publish ourselves (editorial PDF uploads + the admin form).
+                    # Newspaper opinion columns the LLM tags "Editorial" must NOT
+                    # land in the Editorial tab — route them to "Opinion" instead.
+                    for a in articles:
+                        if a.category == "Editorial":
+                            a.category = "Opinion"
                 all_articles.extend(articles)
 
             except UnprocessablePDFError as e:
