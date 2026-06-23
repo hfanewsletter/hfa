@@ -125,12 +125,17 @@ export default async function ArticlePage({ params }: Props) {
               ))}
             </div>
 
-            {/* Sourcing transparency — accountability signal */}
+            {/* Sourcing transparency — accountability signal (category-aware) */}
             <div className="mt-8 pt-5 border-t border-gray-200 text-xs text-gray-500 leading-relaxed">
-              This article was reported by synthesizing coverage from multiple independent news
-              outlets to present a balanced, unbiased account. Read more about{' '}
+              {article.category === 'Editorial' ? (
+                <>This is an opinion piece and reflects the views of its author, not a news report.</>
+              ) : (
+                <>This article was reported by synthesizing coverage from multiple independent news
+                outlets to present a balanced, unbiased account.</>
+              )}
+              {' '}Read about our{' '}
               <Link href="/editorial-standards" className="text-accent hover:underline">
-                how we report
+                editorial standards
               </Link>
               . Spotted an error?{' '}
               <a href="mailto:news@theamericanexpress.us" className="text-accent hover:underline">
