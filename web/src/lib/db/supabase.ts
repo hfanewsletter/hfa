@@ -345,13 +345,13 @@ export class SupabaseAdapter implements DBAdapter {
       rewritten_content: input.body,          // published verbatim
       summary,
       category: 'Editorial',
-      embedding_json: null,
+      embedding_json: '[]',     // column is NOT NULL — manual editorials have no embedding
       source_pdfs: [],          // website-only; not swept into the daily email digest
       published_at: now.toISOString(),
       importance_score: 7,
       is_breaking: false,
       website_url: `/article/${slug}`,
-      image_url: null,
+      image_url: '',            // column is NOT NULL
     }
 
     const { data, error } = await this.client

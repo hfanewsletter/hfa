@@ -404,7 +404,7 @@ export class SQLiteAdapter implements DBAdapter {
       `INSERT INTO articles
         (slug, title, rewritten_content, summary, category, embedding_json,
          source_pdfs, published_at, importance_score, is_breaking, website_url, image_url)
-       VALUES (?, ?, ?, ?, 'Editorial', NULL, ?, ?, 7, 0, ?, NULL)`
+       VALUES (?, ?, ?, ?, 'Editorial', '[]', ?, ?, 7, 0, ?, '')`
     ).run(slug, input.title.trim(), input.body, summary, sourcePdfs, published_at, `/article/${slug}`)
 
     const row = db.prepare(`SELECT * FROM articles WHERE slug = ?`).get(slug) as Record<string, unknown>
