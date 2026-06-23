@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let payload: { title?: string; body?: string; summary?: string }
+  let payload: { title?: string; body?: string; summary?: string; author?: string }
   try {
     payload = await req.json()
   } catch {
@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
   const title = (payload.title || '').trim()
   const body = (payload.body || '').trim()
   const summary = (payload.summary || '').trim()
+  const author = (payload.author || '').trim()
 
   if (title.length < 5) {
     return NextResponse.json({ error: 'Title must be at least 5 characters.' }, { status: 400 })
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const article = await getDB().createEditorial({ title, body, summary })
+    const article = await getDB().createEditorial({ title, body, summary, author })
     return NextResponse.json({ article }, { status: 201 })
   } catch (err) {
     console.error('Failed to create editorial:', err)

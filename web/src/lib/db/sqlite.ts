@@ -52,6 +52,7 @@ function rowToArticle(row: Record<string, unknown>): Article {
     is_breaking: ((row.importance_score as number) ?? 0) >= 9,
     website_url: (row.website_url as string) || '',
     image_url: (row.image_url as string) || '',
+    author: (row.author as string) || undefined,
   }
 }
 
@@ -403,9 +404,10 @@ export class SQLiteAdapter implements DBAdapter {
     db.prepare(
       `INSERT INTO articles
         (slug, title, rewritten_content, summary, category, embedding_json,
-         source_pdfs, published_at, importance_score, is_breaking, website_url, image_url)
-       VALUES (?, ?, ?, ?, 'Editorial', '[]', ?, ?, 7, 0, ?, '')`
-    ).run(slug, input.title.trim(), input.body, summary, sourcePdfs, published_at, `/article/${slug}`)
+         source_pdfs, published_at, importance_score, is_breaking, website_url, image_url, author)
+       VALUES (?, ?, ?, ?, 'Editorial', '[]', ?, ?, 7, 0, ?, '', ?)`
+    ).run(slug, input.title.trim(), input.body, summary, sourcePdfs, published_at,
+          `/article/${slug}`, input.author?.trim() || null)
 
     const row = db.prepare(`SELECT * FROM articles WHERE slug = ?`).get(slug) as Record<string, unknown>
     db.close()

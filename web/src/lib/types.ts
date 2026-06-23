@@ -11,6 +11,7 @@ export interface Article {
   is_breaking: boolean      // derived: importance_score >= 9
   website_url: string
   image_url?: string
+  author?: string           // editorials only — shown as the byline
 }
 
 export interface PDFRecord {

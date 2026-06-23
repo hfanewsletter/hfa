@@ -13,6 +13,7 @@ export interface EditorialInput {
   title: string
   body: string          // published verbatim as the article content
   summary?: string      // optional teaser; auto-derived from body if omitted
+  author?: string       // shown as the byline
 }
 
 export interface DBAdapter {

@@ -106,7 +106,9 @@ export default async function ArticlePage({ params }: Props) {
 
             <div className="flex items-center justify-between pb-5 mb-6 border-b border-gray-200">
               <div className="text-xs text-gray-500">
-                <span className="font-semibold text-gray-600">By the Editorial Team</span>
+                <span className="font-semibold text-gray-600">
+                  By {article.author?.trim() || 'the Editorial Team'}
+                </span>
                 <span className="text-gray-300"> · </span>
                 <span className="text-gray-400">{formatDate(article.published_at)}</span>
               </div>

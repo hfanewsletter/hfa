@@ -14,8 +14,12 @@ CREATE TABLE IF NOT EXISTS articles (
     importance_score  INTEGER NOT NULL DEFAULT 5,
     is_breaking       BOOLEAN NOT NULL DEFAULT FALSE,
     website_url       TEXT NOT NULL DEFAULT '',
-    image_url         TEXT NOT NULL DEFAULT ''
+    image_url         TEXT NOT NULL DEFAULT '',
+    author            TEXT
 );
+
+-- Add author column to existing deployments (no-op if it already exists)
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS author TEXT;
 
 -- Efficient distinct categories (avoids full table scan in JS)
 CREATE OR REPLACE FUNCTION get_distinct_categories()

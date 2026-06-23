@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react'
 
 export default function EditorialForm() {
   const [title, setTitle] = useState('')
+  const [author, setAuthor] = useState('')
   const [summary, setSummary] = useState('')
   const [body, setBody] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
@@ -18,7 +19,7 @@ export default function EditorialForm() {
       const res = await fetch('/api/admin/editorial', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, summary, body }),
+        body: JSON.stringify({ title, author, summary, body }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -28,7 +29,7 @@ export default function EditorialForm() {
       }
       setStatus('success')
       setSlug(data.article?.slug || '')
-      setTitle(''); setSummary(''); setBody('')
+      setTitle(''); setAuthor(''); setSummary(''); setBody('')
     } catch {
       setStatus('error')
       setMessage('Network error. Please try again.')
@@ -67,16 +68,23 @@ export default function EditorialForm() {
           placeholder="Headline of the editorial" className={inputCls} />
       </div>
 
-      <div>
-        <label className={labelCls}>Summary / teaser (optional)</label>
-        <input value={summary} onChange={e => setSummary(e.target.value)}
-          placeholder="Auto-generated from the body if left blank" className={inputCls} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>Author (optional)</label>
+          <input value={author} onChange={e => setAuthor(e.target.value)}
+            placeholder="e.g. Jane Smith" className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>Summary / teaser (optional)</label>
+          <input value={summary} onChange={e => setSummary(e.target.value)}
+            placeholder="Auto-generated from the body if left blank" className={inputCls} />
+        </div>
       </div>
 
       <div>
         <label className={labelCls}>Body *</label>
         <textarea value={body} onChange={e => setBody(e.target.value)} required rows={16}
-          placeholder="Write the editorial here. Separate paragraphs with a blank line. To add a byline, end with a line like '— Jane Smith, Editor'. Published exactly as written — no AI rewriting."
+          placeholder="Write the editorial here. Separate paragraphs with a blank line. Published exactly as written — no AI rewriting."
           className={`${inputCls} font-serif leading-relaxed resize-y`} />
         <p className="text-xs text-gray-400 mt-1">
           Published <strong>verbatim</strong>. Separate paragraphs with a blank line.

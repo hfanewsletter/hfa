@@ -124,6 +124,7 @@ class SQLiteDBProvider(DBProvider):
         for migration in [
             "ALTER TABLE articles ADD COLUMN image_url TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE articles ADD COLUMN importance_score INTEGER NOT NULL DEFAULT 5",
+            "ALTER TABLE articles ADD COLUMN author TEXT",
         ]:
             try:
                 conn.execute(migration)

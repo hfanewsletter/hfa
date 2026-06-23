@@ -18,6 +18,7 @@ function rowToArticle(row: Record<string, unknown>): Article {
     is_breaking: ((row.importance_score as number) ?? 0) >= 9,
     website_url: (row.website_url as string) || '',
     image_url: (row.image_url as string) || '',
+    author: (row.author as string) || undefined,
   }
 }
 
@@ -339,7 +340,7 @@ export class SupabaseAdapter implements DBAdapter {
     const slug = slugify(input.title, dateStr)
     const summary = input.summary?.trim() || truncate(input.body.replace(/\s+/g, ' ').trim(), 40)
 
-    const row = {
+    const row: Record<string, unknown> = {
       slug,
       title: input.title.trim(),
       rewritten_content: input.body,          // published verbatim
@@ -352,13 +353,19 @@ export class SupabaseAdapter implements DBAdapter {
       is_breaking: false,
       website_url: `/article/${slug}`,
       image_url: '',            // column is NOT NULL
+      author: input.author?.trim() || null,
     }
 
-    const { data, error } = await this.client
-      .from('articles')
-      .insert(row)
-      .select('*')
-      .single()
+    let { data, error } = await this.client
+      .from('articles').insert(row).select('*').single()
+
+    // Graceful fallback if the `author` column hasn't been added yet — publish
+    // without it rather than failing the whole post.
+    if (error && String(error.message || '').toLowerCase().includes('author')) {
+      delete row.author
+      ;({ data, error } = await this.client
+        .from('articles').insert(row).select('*').single())
+    }
     if (error) throw error
     return rowToArticle(data)
   }
