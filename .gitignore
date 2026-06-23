@@ -1,6 +1,11 @@
 # Environment & secrets
 .env
 
+# Subscriber data / PII exports — keep local, never commit
+*.xlsx
+*.xls
+*.csv
+
 # Claude Code
 .claude/
 CLAUDE.md
