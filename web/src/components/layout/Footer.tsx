@@ -51,7 +51,10 @@ export default function Footer() {
 
         <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-3 text-xs text-blue-300">
           <p>© {new Date().getFullYear()} The American Express Times. All rights reserved.</p>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center">
+            <Link href="/editorial-standards" className="hover:text-white transition-colors">Editorial Standards</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
             <Link href="/newsletter" className="hover:text-white transition-colors">Newsletter Archive</Link>
             <Link href="/admin" className="hover:text-white transition-colors">Admin</Link>
           </div>

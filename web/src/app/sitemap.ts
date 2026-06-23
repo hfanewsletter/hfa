@@ -19,6 +19,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl('/archive'), changeFrequency: 'daily', priority: 0.6 },
     { url: absoluteUrl('/newsletter'), changeFrequency: 'daily', priority: 0.5 },
     { url: absoluteUrl('/editorial'), changeFrequency: 'daily', priority: 0.5 },
+    { url: absoluteUrl('/about'), changeFrequency: 'monthly', priority: 0.4 },
+    { url: absoluteUrl('/editorial-standards'), changeFrequency: 'monthly', priority: 0.4 },
+    { url: absoluteUrl('/terms'), changeFrequency: 'yearly', priority: 0.3 },
+    { url: absoluteUrl('/privacy'), changeFrequency: 'yearly', priority: 0.3 },
+    { url: absoluteUrl('/contact'), changeFrequency: 'yearly', priority: 0.3 },
   ]
 
   const sectionRoutes: MetadataRoute.Sitemap = categories.map((cat) => ({

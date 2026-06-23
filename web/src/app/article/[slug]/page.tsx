@@ -105,7 +105,11 @@ export default async function ArticlePage({ params }: Props) {
             </h1>
 
             <div className="flex items-center justify-between pb-5 mb-6 border-b border-gray-200">
-              <span className="text-xs text-gray-400">{formatDate(article.published_at)}</span>
+              <div className="text-xs text-gray-500">
+                <span className="font-semibold text-gray-600">By the Editorial Team</span>
+                <span className="text-gray-300"> · </span>
+                <span className="text-gray-400">{formatDate(article.published_at)}</span>
+              </div>
               <ShareButtons title={article.title} slug={slug} />
             </div>
 
@@ -119,6 +123,20 @@ export default async function ArticlePage({ params }: Props) {
               {paragraphs.map((p, i) => (
                 <p key={i}>{p}</p>
               ))}
+            </div>
+
+            {/* Sourcing transparency — accountability signal */}
+            <div className="mt-8 pt-5 border-t border-gray-200 text-xs text-gray-500 leading-relaxed">
+              This article was reported by synthesizing coverage from multiple independent news
+              outlets to present a balanced, unbiased account. Read more about{' '}
+              <Link href="/editorial-standards" className="text-accent hover:underline">
+                how we report
+              </Link>
+              . Spotted an error?{' '}
+              <a href="mailto:news@theamericanexpress.us" className="text-accent hover:underline">
+                Let us know
+              </a>
+              .
             </div>
           </div>
         </article>
