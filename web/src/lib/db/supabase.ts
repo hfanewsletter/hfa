@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
-import type { DBAdapter, Edition } from './index'
+import type { DBAdapter, Edition, EditorialInput } from './index'
 import type { Article, PDFRecord, Schedule, WeeklyEdition, HomepageData } from '@/lib/types'
-import { getDateEST, advanceDateStr } from '@/lib/utils'
+import { getDateEST, advanceDateStr, slugify, truncate } from '@/lib/utils'
 
 function rowToArticle(row: Record<string, unknown>): Article {
   const sp = row.source_pdfs
@@ -305,6 +305,62 @@ export class SupabaseAdapter implements DBAdapter {
       .gte('published_at', today)
       .lt('published_at', tomorrow)
     return (count ?? 0) > 0
+  }
+
+  async hasEditorials(): Promise<boolean> {
+    const { count } = await this.client
+      .from('articles')
+      .select('id', { count: 'exact', head: true })
+      .eq('category', 'Editorial')
+    return (count ?? 0) > 0
+  }
+
+  async getEditorials(limit: number, offset: number): Promise<Article[]> {
+    const { data } = await this.client
+      .from('articles')
+      .select('*')
+      .eq('category', 'Editorial')
+      .order('published_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+    return (data ?? []).map(rowToArticle)
+  }
+
+  async getEditorialCount(): Promise<number> {
+    const { count } = await this.client
+      .from('articles')
+      .select('id', { count: 'exact', head: true })
+      .eq('category', 'Editorial')
+    return count ?? 0
+  }
+
+  async createEditorial(input: EditorialInput): Promise<Article> {
+    const now = new Date()
+    const dateStr = getDateEST()
+    const slug = slugify(input.title, dateStr)
+    const summary = input.summary?.trim() || truncate(input.body.replace(/\s+/g, ' ').trim(), 40)
+
+    const row = {
+      slug,
+      title: input.title.trim(),
+      rewritten_content: input.body,          // published verbatim
+      summary,
+      category: 'Editorial',
+      embedding_json: null,
+      source_pdfs: [],          // website-only; not swept into the daily email digest
+      published_at: now.toISOString(),
+      importance_score: 7,
+      is_breaking: false,
+      website_url: `/article/${slug}`,
+      image_url: null,
+    }
+
+    const { data, error } = await this.client
+      .from('articles')
+      .insert(row)
+      .select('*')
+      .single()
+    if (error) throw error
+    return rowToArticle(data)
   }
 
   async createWeeklyEditionJob(edition_date: string): Promise<WeeklyEdition> {

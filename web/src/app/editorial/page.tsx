@@ -1,15 +1,31 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { getDB } from '@/lib/db'
 import ArticleCard from '@/components/article/ArticleCard'
-import { getDateEST } from '@/lib/utils'
 
-export const metadata: Metadata = { title: 'Editorial' }
+export const metadata: Metadata = {
+  title: 'Editorial',
+  description: 'Opinion and analysis from The American Express Times editorial team.',
+}
 
 export const revalidate = 60
 
-export default async function EditorialPage() {
-  const today = getDateEST()
-  const articles = await getDB().getEditorialArticles(today)
+const PAGE_SIZE = 12
+
+export default async function EditorialPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const { page: pageParam } = await searchParams
+  const page = Math.max(1, parseInt(pageParam || '1', 10) || 1)
+  const offset = (page - 1) * PAGE_SIZE
+
+  const [articles, total] = await Promise.all([
+    getDB().getEditorials(PAGE_SIZE, offset).catch(() => []),
+    getDB().getEditorialCount().catch(() => 0),
+  ])
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -19,16 +35,38 @@ export default async function EditorialPage() {
           Editorial
         </h1>
         <p className="text-gray-500 text-sm mt-3">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          Original opinion and analysis from our editorial team.
         </p>
       </div>
 
       {articles.length === 0 ? (
-        <p className="text-gray-500 text-sm">No editorial articles today.</p>
+        <p className="text-gray-500 text-sm">No editorial articles yet.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {articles.map(a => <ArticleCard key={a.slug} article={a} variant="grid" />)}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {articles.map(a => <ArticleCard key={a.slug} article={a} variant="grid" />)}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 mt-10 text-sm">
+              {page > 1 ? (
+                <Link href={`/editorial?page=${page - 1}`}
+                  className="px-4 py-2 rounded border border-gray-300 text-primary hover:bg-gray-50 font-semibold">
+                  ← Newer
+                </Link>
+              ) : <span className="px-4 py-2 text-gray-300">← Newer</span>}
+
+              <span className="text-gray-500">Page {page} of {totalPages}</span>
+
+              {page < totalPages ? (
+                <Link href={`/editorial?page=${page + 1}`}
+                  className="px-4 py-2 rounded border border-gray-300 text-primary hover:bg-gray-50 font-semibold">
+                  Older →
+                </Link>
+              ) : <span className="px-4 py-2 text-gray-300">Older →</span>}
+            </div>
+          )}
+        </>
       )}
     </div>
   )

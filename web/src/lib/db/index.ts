@@ -8,6 +8,13 @@ export interface Edition {
   top_image_url: string
 }
 
+/** Payload for creating an editorial directly from the admin form. */
+export interface EditorialInput {
+  title: string
+  body: string          // published verbatim as the article content
+  summary?: string      // optional teaser; auto-derived from body if omitted
+}
+
 export interface DBAdapter {
   getLatestArticles(limit?: number): Promise<Article[]>
   getArticleBySlug(slug: string): Promise<Article | null>
@@ -28,6 +35,10 @@ export interface DBAdapter {
   createWeeklyEditionJob(edition_date: string): Promise<WeeklyEdition>
   getEditorialArticles(date: string): Promise<Article[]>
   hasEditorialsToday(): Promise<boolean>
+  hasEditorials(): Promise<boolean>
+  getEditorials(limit: number, offset: number): Promise<Article[]>
+  getEditorialCount(): Promise<number>
+  createEditorial(input: EditorialInput): Promise<Article>
   getTotalArticleCount(): Promise<number>
   getProcessedPDFCount(): Promise<number>
   getSubscriberCount(): Promise<number>

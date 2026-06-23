@@ -57,7 +57,9 @@ async function getCategories() {
 
 async function getHasEditorialsToday() {
   try {
-    return await getDB().hasEditorialsToday()
+    // Show the Editorial nav link whenever ANY editorial exists (they persist),
+    // not only on days a new one is published.
+    return await getDB().hasEditorials()
   } catch {
     return false
   }

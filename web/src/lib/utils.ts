@@ -91,3 +91,19 @@ export function truncate(text: string, maxWords: number): string {
   if (words.length <= maxWords) return text
   return words.slice(0, maxWords).join(' ') + '…'
 }
+
+/**
+ * URL-safe slug matching the Python pipeline's generate_slug():
+ * lowercase, strip punctuation, spaces→hyphens, cap title at 55 chars,
+ * then append the date as `-YYYY-MM-DD`.
+ */
+export function slugify(title: string, dateStr: string): string {
+  const base = title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 55)
+    .replace(/-+$/g, '')
+  return `${base}-${dateStr}`
+}

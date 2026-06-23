@@ -242,10 +242,16 @@ class Pipeline:
 
         def _rewrite_worker(idx_articles):
             idx, group_articles = idx_articles
+            primary = group_articles[0]
             try:
+                # Editorials are the author's own opinion — publish them VERBATIM,
+                # never run them through the unbiased news rewriter (which would
+                # strip the voice/argument that makes an editorial an editorial).
+                if primary.category == "Editorial":
+                    logger.info("Editorial '%s' — publishing verbatim (skipping rewriter)", primary.title)
+                    return idx, primary.content
                 return idx, self.rewriter.rewrite(group_articles)
             except Exception as e:
-                primary = group_articles[0]
                 logger.error("Failed to rewrite '%s': %s", primary.title, e, exc_info=True)
                 return idx, None
 

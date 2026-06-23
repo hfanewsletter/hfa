@@ -51,6 +51,16 @@ export default async function AdminPage() {
         ))}
       </div>
 
+      {/* Quick actions */}
+      <div className="mb-8">
+        <Link href="/admin/editorial"
+          className="inline-flex items-center gap-2 bg-primary hover:bg-blue-900 text-white
+                     text-sm font-semibold px-4 py-2.5 rounded transition-colors">
+          ✎ Write an Editorial
+        </Link>
+        <span className="ml-3 text-xs text-gray-400">Original opinion pieces, published verbatim (no AI rewrite).</span>
+      </div>
+
       {/* Main content — client wrapper handles refresh after upload */}
       <AdminRefresh />
     </div>

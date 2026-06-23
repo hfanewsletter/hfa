@@ -6,9 +6,9 @@
  * This adapter is NEVER used on Vercel — only when SUPABASE env vars are absent.
  */
 import path from 'path'
-import type { DBAdapter, Edition } from './index'
+import type { DBAdapter, Edition, EditorialInput } from './index'
 import type { Article, PDFRecord, Schedule, WeeklyEdition, HomepageData } from '@/lib/types'
-import { getDateEST, advanceDateStr } from '@/lib/utils'
+import { getDateEST, advanceDateStr, slugify, truncate } from '@/lib/utils'
 
 function openDB() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -363,6 +363,53 @@ export class SQLiteAdapter implements DBAdapter {
     ).get(today) as { count: number }
     db.close()
     return row.count > 0
+  }
+
+  async hasEditorials(): Promise<boolean> {
+    const db = openDB()
+    const row = db.prepare(
+      `SELECT COUNT(*) as count FROM articles WHERE category = 'Editorial'`
+    ).get() as { count: number }
+    db.close()
+    return row.count > 0
+  }
+
+  async getEditorials(limit: number, offset: number): Promise<Article[]> {
+    const db = openDB()
+    const rows = db.prepare(
+      `SELECT * FROM articles WHERE category = 'Editorial' ORDER BY published_at DESC LIMIT ? OFFSET ?`
+    ).all(limit, offset) as Record<string, unknown>[]
+    db.close()
+    return rows.map(rowToArticle)
+  }
+
+  async getEditorialCount(): Promise<number> {
+    const db = openDB()
+    const row = db.prepare(
+      `SELECT COUNT(*) as count FROM articles WHERE category = 'Editorial'`
+    ).get() as { count: number }
+    db.close()
+    return row.count
+  }
+
+  async createEditorial(input: EditorialInput): Promise<Article> {
+    const db = openDB()
+    const dateStr = getDateEST()
+    const slug = slugify(input.title, dateStr)
+    const summary = input.summary?.trim() || truncate(input.body.replace(/\s+/g, ' ').trim(), 40)
+    const published_at = new Date().toISOString()
+    const sourcePdfs = JSON.stringify([])   // website-only; not swept into the email digest
+
+    db.prepare(
+      `INSERT INTO articles
+        (slug, title, rewritten_content, summary, category, embedding_json,
+         source_pdfs, published_at, importance_score, is_breaking, website_url, image_url)
+       VALUES (?, ?, ?, ?, 'Editorial', NULL, ?, ?, 7, 0, ?, NULL)`
+    ).run(slug, input.title.trim(), input.body, summary, sourcePdfs, published_at, `/article/${slug}`)
+
+    const row = db.prepare(`SELECT * FROM articles WHERE slug = ?`).get(slug) as Record<string, unknown>
+    db.close()
+    return rowToArticle(row)
   }
 
   async createWeeklyEditionJob(edition_date: string): Promise<WeeklyEdition> {
