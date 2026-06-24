@@ -1,5 +1,6 @@
 import logging
 import re
+import unicodedata
 import concurrent.futures
 from datetime import datetime
 from typing import List, Tuple
@@ -16,12 +17,16 @@ logger = logging.getLogger(__name__)
 
 
 def generate_slug(title: str, date: datetime = None) -> str:
-    """Convert an article title + date into a URL-safe slug."""
+    """Convert an article title + date into a URL-safe, ASCII-only slug."""
     if date is None:
         date = datetime.now()
     slug = title.lower()
-    slug = re.sub(r"[^\w\s-]", "", slug)
+    # Transliterate accented/non-ASCII letters to ASCII (ü→u, é→e, ñ→n) so URLs
+    # never contain raw multibyte chars that 404 on Unicode-normalization mismatch.
+    slug = unicodedata.normalize("NFKD", slug).encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^a-z0-9\s-]", "", slug)
     slug = re.sub(r"[\s_]+", "-", slug.strip())
+    slug = re.sub(r"-+", "-", slug).strip("-")
     slug = slug[:55].rstrip("-")
     date_str = date.strftime("%Y-%m-%d")
     return f"{slug}-{date_str}"

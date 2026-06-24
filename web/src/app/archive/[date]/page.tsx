@@ -17,7 +17,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const label = d.toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
   })
-  return { title: `${label} — The American Express Times Archive` }
+  return {
+    title: `${label} — The American Express Times Archive`,
+    // Thin date-listing pages: keep them out of the index (Google won't index them
+    // anyway) but follow the links so the articles they list still get discovered.
+    robots: { index: false, follow: true },
+  }
 }
 
 export const revalidate = 300

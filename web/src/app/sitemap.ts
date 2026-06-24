@@ -7,10 +7,9 @@ export const revalidate = 3600 // rebuild sitemap hourly
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const db = getDB()
 
-  const [articles, categories, editions] = await Promise.all([
+  const [articles, categories] = await Promise.all([
     db.getLatestArticles(2000).catch(() => []),
     db.getCategories().catch(() => []),
-    db.getEditionDates(120).catch(() => []),
   ])
 
   const staticRoutes: MetadataRoute.Sitemap = [
@@ -32,11 +31,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }))
 
-  const archiveRoutes: MetadataRoute.Sitemap = editions.map((e) => ({
-    url: absoluteUrl(`/archive/${e.date}`),
-    changeFrequency: 'weekly',
-    priority: 0.4,
-  }))
+  // Archive date pages are intentionally NOT in the sitemap — they're noindexed
+  // thin listing pages (still reachable/crawlable via the /archive index).
 
   const articleRoutes: MetadataRoute.Sitemap = articles.map((a) => ({
     url: absoluteUrl(`/article/${a.slug}`),
@@ -45,5 +41,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }))
 
-  return [...staticRoutes, ...sectionRoutes, ...archiveRoutes, ...articleRoutes]
+  return [...staticRoutes, ...sectionRoutes, ...articleRoutes]
 }

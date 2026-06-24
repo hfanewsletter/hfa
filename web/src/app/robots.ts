@@ -6,7 +6,9 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/admin', '/api/'],
+      // Block Next.js internal RSC fetch URLs (?_rsc=...) — they leak into the
+      // crawl as junk duplicates of real pages.
+      disallow: ['/admin', '/api/', '/*?_rsc=', '/*&_rsc='],
     },
     sitemap: absoluteUrl('/sitemap.xml'),
   }

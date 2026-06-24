@@ -100,8 +100,13 @@ export function truncate(text: string, maxWords: number): string {
 export function slugify(title: string, dateStr: string): string {
   const base = title
     .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
+    // Transliterate accented/non-ASCII letters to ASCII (ü→u, é→e) so URLs never
+    // contain raw multibyte chars that 404 on Unicode-normalization mismatch.
+    // NFKD splits 'ü' into 'u' + combining mark; the a-z0-9 filter then drops the mark.
+    .normalize('NFKD')
+    .replace(/[^a-z0-9\s-]/g, '')
     .replace(/[\s_]+/g, '-')
+    .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 55)
     .replace(/-+$/g, '')
