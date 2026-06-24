@@ -19,7 +19,9 @@ export const metadata: Metadata = {
   title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
   description: DESCRIPTION,
   applicationName: SITE_NAME,
-  alternates: { canonical: '/' },
+  // NOTE: do NOT set a blanket canonical here — it would make every page
+  // canonicalize to the homepage. Each page sets its own; pages without one
+  // self-canonicalize to their URL (correct default).
   verification: {
     google: 'rATg6PSbDGOucJpM2bbCFIfbYrA5jYSAmBwaivvWx5E',
   },

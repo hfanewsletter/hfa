@@ -54,10 +54,12 @@ export default async function ArticlePage({ params }: Props) {
     .map(p => p.trim())
     .filter(Boolean)
 
-  // NewsArticle structured data — required for rich results & Google News eligibility
+  // Structured data — rich results & Google News eligibility. Editorials use
+  // OpinionNewsArticle (Google's type for opinion) and credit the named author.
+  const isEditorial = article.category === 'Editorial'
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'NewsArticle',
+    '@type': isEditorial ? 'OpinionNewsArticle' : 'NewsArticle',
     headline: article.title,
     description: article.summary,
     datePublished: article.published_at,
@@ -65,7 +67,9 @@ export default async function ArticlePage({ params }: Props) {
     articleSection: article.category,
     mainEntityOfPage: { '@type': 'WebPage', '@id': absoluteUrl(`/article/${article.slug}`) },
     image: [article.image_url || absoluteUrl('/logo.jpeg')],
-    author: { '@type': 'Organization', name: SITE_NAME },
+    author: article.author
+      ? { '@type': 'Person', name: article.author }
+      : { '@type': 'Organization', name: SITE_NAME },
     publisher: {
       '@type': 'Organization',
       name: SITE_NAME,

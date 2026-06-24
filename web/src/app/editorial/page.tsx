@@ -2,10 +2,29 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getDB } from '@/lib/db'
 import ArticleCard from '@/components/article/ArticleCard'
+import { absoluteUrl, SITE_NAME } from '@/lib/seo'
+
+const EDITORIAL_DESC =
+  'Original editorials, opinion, and analysis from The American Express Times — independent, balanced perspectives on the day’s most important stories.'
 
 export const metadata: Metadata = {
-  title: 'Editorial',
-  description: 'Opinion and analysis from The American Express Times editorial team.',
+  title: 'Editorial — Opinion & Analysis',
+  description: EDITORIAL_DESC,
+  alternates: { canonical: absoluteUrl('/editorial') },
+  openGraph: {
+    type: 'website',
+    title: `Editorial — ${SITE_NAME}`,
+    description: EDITORIAL_DESC,
+    url: absoluteUrl('/editorial'),
+    siteName: SITE_NAME,
+    images: ['/logo.jpeg'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `Editorial — ${SITE_NAME}`,
+    description: EDITORIAL_DESC,
+    images: ['/logo.jpeg'],
+  },
 }
 
 export const revalidate = 60
