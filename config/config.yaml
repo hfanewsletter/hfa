@@ -73,6 +73,18 @@ processing:
   # but excluded from the email digest. Set to 0 to disable.
   max_newspaper_age_days: 3
 
+# Content normalization — deterministic term replacements applied to every
+# article's title, summary, and body before saving (news + editorials). Keeps
+# loaded/biased phrasing off the site and email. Case-insensitive; longer phrases
+# are applied first. Add more [phrase, replacement] pairs here as needed.
+content_filters:
+  replacements:
+    - ["the zionist entity", "Israel"]
+    - ["zionist entity", "Israel"]
+    - ["the zionist regime", "Israel"]
+    - ["zionist regime", "Israel"]
+    - ["zionist state", "Israel"]
+
 # Logging
 logging:
   level: INFO

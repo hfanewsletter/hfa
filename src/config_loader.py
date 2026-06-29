@@ -1,8 +1,10 @@
 import os
 import yaml
-from dataclasses import dataclass
-from typing import List
+from dataclasses import dataclass, field
+from typing import List, Tuple
 from dotenv import load_dotenv
+
+from src.content_filter import DEFAULT_REPLACEMENTS
 
 load_dotenv()
 
@@ -58,6 +60,8 @@ class AppConfig:
     log_level: str
     log_file: str
     max_newspaper_age_days: int = 3  # 0 = disabled
+    # Deterministic term normalizations: list of (phrase, replacement)
+    content_replacements: List[Tuple[str, str]] = field(default_factory=lambda: list(DEFAULT_REPLACEMENTS))
 
 
 def load_config(config_path: str = "config/config.yaml") -> AppConfig:
@@ -109,4 +113,9 @@ def load_config(config_path: str = "config/config.yaml") -> AppConfig:
         log_level=raw.get("logging", {}).get("level", "INFO"),
         log_file=raw.get("logging", {}).get("log_file", "./logs/app.log"),
         max_newspaper_age_days=int(raw.get("processing", {}).get("max_newspaper_age_days", 3)),
+        content_replacements=[
+            (str(pair[0]), str(pair[1]))
+            for pair in raw.get("content_filters", {}).get("replacements", DEFAULT_REPLACEMENTS)
+            if pair and len(pair) == 2
+        ] or list(DEFAULT_REPLACEMENTS),
     )

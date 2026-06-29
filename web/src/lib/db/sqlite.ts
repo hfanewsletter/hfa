@@ -8,7 +8,7 @@
 import path from 'path'
 import type { DBAdapter, Edition, EditorialInput } from './index'
 import type { Article, PDFRecord, Schedule, WeeklyEdition, HomepageData } from '@/lib/types'
-import { getDateEST, advanceDateStr, slugify, truncate } from '@/lib/utils'
+import { getDateEST, advanceDateStr, slugify, truncate, normalizeTerms } from '@/lib/utils'
 
 function openDB() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -396,8 +396,13 @@ export class SQLiteAdapter implements DBAdapter {
   async createEditorial(input: EditorialInput): Promise<Article> {
     const db = openDB()
     const dateStr = getDateEST()
-    const slug = slugify(input.title, dateStr)
-    const summary = input.summary?.trim() || truncate(input.body.replace(/\s+/g, ' ').trim(), 40)
+    // Normalize loaded terms even on hand-typed editorials (brand/safety rule).
+    const title = normalizeTerms(input.title.trim())
+    const body = normalizeTerms(input.body)
+    const slug = slugify(title, dateStr)
+    const summary = normalizeTerms(
+      input.summary?.trim() || truncate(input.body.replace(/\s+/g, ' ').trim(), 40)
+    )
     const published_at = new Date().toISOString()
     const sourcePdfs = JSON.stringify([])   // website-only; not swept into the email digest
 
@@ -406,7 +411,7 @@ export class SQLiteAdapter implements DBAdapter {
         (slug, title, rewritten_content, summary, category, embedding_json,
          source_pdfs, published_at, importance_score, is_breaking, website_url, image_url, author)
        VALUES (?, ?, ?, ?, 'Editorial', '[]', ?, ?, 7, 0, ?, '', ?)`
-    ).run(slug, input.title.trim(), input.body, summary, sourcePdfs, published_at,
+    ).run(slug, title, body, summary, sourcePdfs, published_at,
           `/article/${slug}`, input.author?.trim() || null)
 
     const row = db.prepare(`SELECT * FROM articles WHERE slug = ?`).get(slug) as Record<string, unknown>

@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import type { DBAdapter, Edition, EditorialInput } from './index'
 import type { Article, PDFRecord, Schedule, WeeklyEdition, HomepageData } from '@/lib/types'
-import { getDateEST, advanceDateStr, slugify, truncate } from '@/lib/utils'
+import { getDateEST, advanceDateStr, slugify, truncate, normalizeTerms } from '@/lib/utils'
 
 function rowToArticle(row: Record<string, unknown>): Article {
   const sp = row.source_pdfs
@@ -337,13 +337,18 @@ export class SupabaseAdapter implements DBAdapter {
   async createEditorial(input: EditorialInput): Promise<Article> {
     const now = new Date()
     const dateStr = getDateEST()
-    const slug = slugify(input.title, dateStr)
-    const summary = input.summary?.trim() || truncate(input.body.replace(/\s+/g, ' ').trim(), 40)
+    // Normalize loaded terms even on hand-typed editorials (brand/safety rule).
+    const title = normalizeTerms(input.title.trim())
+    const body = normalizeTerms(input.body)
+    const slug = slugify(title, dateStr)
+    const summary = normalizeTerms(
+      input.summary?.trim() || truncate(input.body.replace(/\s+/g, ' ').trim(), 40)
+    )
 
     const row: Record<string, unknown> = {
       slug,
-      title: input.title.trim(),
-      rewritten_content: input.body,          // published verbatim
+      title,
+      rewritten_content: body,                // published verbatim (terms normalized)
       summary,
       category: 'Editorial',
       embedding_json: '[]',     // column is NOT NULL — manual editorials have no embedding

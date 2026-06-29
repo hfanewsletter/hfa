@@ -289,6 +289,7 @@ REQUIREMENTS:
 - Do NOT mention or name the source publications
 - If sources disagree, present both sides fairly
 - Preserve all proper nouns (people's names, place names, organisation names) exactly as they appear in the source material — do not alter their spelling
+- Use neutral, standard names for countries and governments. Always refer to the state of Israel as "Israel" — never as "the Zionist entity", "Zionist regime", "Zionist state", or similar loaded/partisan terms, even if a source uses them
 
 SOURCE MATERIAL ({num_sources} source{'s' if num_sources > 1 else ''}):
 {sources_block}

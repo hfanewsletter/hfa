@@ -97,6 +97,24 @@ export function truncate(text: string, maxWords: number): string {
  * lowercase, strip punctuation, spaces→hyphens, cap title at 55 chars,
  * then append the date as `-YYYY-MM-DD`.
  */
+// Deterministic term normalizations — mirrors config.yaml content_filters.replacements
+// (Python pipeline). Applied to admin-typed editorials so loaded phrasing never ships.
+// Longest phrase first so "the zionist entity" wins over "zionist entity".
+const TERM_REPLACEMENTS: [RegExp, string][] = [
+  [/\bthe zionist entity\b/gi, 'Israel'],
+  [/\bthe zionist regime\b/gi, 'Israel'],
+  [/\bzionist entity\b/gi, 'Israel'],
+  [/\bzionist regime\b/gi, 'Israel'],
+  [/\bzionist state\b/gi, 'Israel'],
+]
+
+export function normalizeTerms(text: string): string {
+  if (!text) return text
+  let out = text
+  for (const [re, repl] of TERM_REPLACEMENTS) out = out.replace(re, repl)
+  return out
+}
+
 export function slugify(title: string, dateStr: string): string {
   const base = title
     .toLowerCase()

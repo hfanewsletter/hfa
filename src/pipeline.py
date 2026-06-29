@@ -10,6 +10,7 @@ from src.providers.storage import get_storage_provider
 from src.providers.db import get_db_provider
 from src.providers.db.base import ArticleRecord, PDFRecord
 from src.article_extractor import ArticleExtractor
+from src.content_filter import apply_replacements
 from src.pdf_processor import PDFProcessor, UnprocessablePDFError
 from src.rewriter import Rewriter, generate_slug
 from src.deduplicator import Deduplicator
@@ -302,6 +303,16 @@ class Pipeline:
 
         # Summarize all unique articles
         processed = self.summarizer.summarize_all(processed)
+
+        # Deterministically normalize loaded/biased terms (e.g. "the Zionist entity"
+        # -> "Israel") across title, body, and summary BEFORE save/slug generation,
+        # so the term never reaches the website or email regardless of the LLM output.
+        for pa in processed:
+            if pa.is_duplicate:
+                continue
+            pa.article.title = apply_replacements(pa.article.title, self.config.content_replacements)
+            pa.rewritten_content = apply_replacements(pa.rewritten_content, self.config.content_replacements)
+            pa.summary = apply_replacements(pa.summary, self.config.content_replacements)
 
         # Save unique articles to DB and update their website URLs (slug may have been
         # adjusted for uniqueness by the DB layer)

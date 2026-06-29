@@ -280,6 +280,7 @@ REQUIREMENTS:
 - Do NOT include a headline — write only the article body
 - Do NOT mention or name the source publications
 - If sources disagree, present both sides fairly
+- Use neutral, standard names for countries and governments. Always refer to the state of Israel as "Israel" — never as "the Zionist entity", "Zionist regime", "Zionist state", or similar loaded/partisan terms, even if a source uses them
 
 SOURCE MATERIAL ({num_sources} source{'s' if num_sources > 1 else ''}):
 {sources_block}
